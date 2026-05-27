@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calco — Panel OMR</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
+  header { background: #1a73e8; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.4rem; font-weight: 700; }
+  header span { font-size: 0.9rem; opacity: 0.85; }
+  .tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; padding: 0 24px; }
+  .tab { padding: 14px 20px; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+  .tab:hover { color: #1a73e8; }
+  .panel { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
+  .panel.active { display: block; }
+  .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #333; }
+  input, select { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+  input:focus, select:focus { border-color: #1a73e8; }
+  label { font-size: 0.85rem; font-weight: 600; color: #555; display: block; margin-bottom: 4px; margin-top: 12px; }
+  button { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: background 0.2s; }
+  button:hover { background: #1557b0; }
+  button.secondary { background: white; color: #1a73e8; border: 1.5px solid #1a73e8; }
+  button.danger { background: #e53935; }
+  button.danger:hover { background: #b71c1c; }
+  .grid-opciones { display: grid; grid-template-columns: 40px repeat(5, 1fr); gap: 4px; margin-bottom: 8px; }
+  .grid-header { font-weight: 700; text-align: center; padding: 6px; font-size: 0.85rem; color: #555; }
+  .fila-pregunta { display: contents; }
+  .num-pregunta { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 0.8rem; color: #888; font-weight: 600; }
+  .burbuja { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #999; transition: all 0.15s; background: white; }
+  .burbuja.marcada { background: #1a73e8; border-color: #1a73e8; color: white; }
+  .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .tabla { width: 100%; border-collapse: collapse; }
+  .tabla th { background: #f5f7fa; padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #555; border-bottom: 2px solid #e0e0e0; }
+  .tabla td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
+  .tabla tr:hover td { background: #fafafa; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
+  .badge.verde { background: #e8f5e9; color: #2e7d32; }
+  .badge.rojo { background: #ffebee; color: #c62828; }
+  .badge.azul { background: #e3f2fd; color: #1565c0; }
+  .nota-grande { font-size: 3rem; font-weight: 800; color: #1a73e8; text-align: center; margin: 16px 0 4px; }
+  .nota-label { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stat { text-align: center; padding: 12px; background: #f5f7fa; border-radius: 8px; }
+  .stat .num { font-size: 1.6rem; font-weight: 800; }
+  .stat .lbl { font-size: 0.78rem; color: #888; }
+  .detalle-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 12px; }
+  .detalle-celda { padding: 4px; border-radius: 4px; text-align: center; font-size: 0.7rem; font-weight: 600; }
+  .detalle-celda.correcta { background: #e8f5e9; color: #2e7d32; }
+  .detalle-celda.incorrecta { background: #ffebee; color: #c62828; }
+  .detalle-celda.omitida { background: #f5f5f5; color: #bbb; }
+  .msg { padding: 12px 16px; border-radius: 8px; margin: 8px 0; font-size: 0.9rem; }
+  .msg.ok { background: #e8f5e9; color: #2e7d32; }
+  .msg.err { background: #ffebee; color: #c62828; }
+  .upload-area { border: 2px dashed #ccc; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-area:hover { border-color: #1a73e8; background: #f0f7ff; }
+  .upload-area input { display: none; }
+  .row { display: flex; gap: 12px; align-items: flex-end; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0 0 auto; }
+  #resultado { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Calco — Panel OMR</h1>
+    <span>Corrección automática de hojas de respuesta</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('pautas')">📋 Pautas</div>
+  <div class="tab" onclick="showTab('nueva')">➕ Nueva Pauta</div>
+  <div class="tab" onclick="showTab('corregir')">🔍 Corregir Hoja</div>
+</div>
+
+<!-- TAB: PAUTAS -->
+<div class="panel active" id="tab-pautas">
+  <div class="card">
+    <h2>Pautas registradas</h2>
+    <div id="lista-pautas"><p style="color:#aaa">Cargando...</p></div>
+  </div>
+</div>
+
+<!-- TAB: NUEVA PAUTA -->
+<div class="panel" id="tab-nueva">
+  <div class="card">
+    <h2>Datos del ensayo</h2>
+    <label>Nombre del ensayo</label>
+    <input type="text" id="np-nombre" placeholder="Ej: Ensayo LG-1 Mayo 2026">
+    <label>Asignatura</label>
+    <input type="text" id="np-asignatura" placeholder="Ej: Lenguaje y Comunicación">
+    <label>Total de preguntas</label>
+    <select id="np-total">
+      <option value="80">80 preguntas</option>
+      <option value="65">65 preguntas</option>
+      <option value="60">60 preguntas</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <h2>Respuestas correctas</h2>
+    <div class="grid-2col">
+      <div>
+        <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 1 – 40</p>
+        <div class="grid-opciones" id="col-izq">
+          <div class="grid-header"></div>
+          <div class="grid-header">A</div>
+          <div class="grid-header">B</div>
+          <div class="grid-header">C</div>
+          <div class="grid-header">D</div>
+          <div class="grid-header">E</div>
+        </div>
+      </div>
+      <div>
+        <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 41 – 80</p>
+        <div class="grid-opciones" id="col-der">
+          <div class="grid-header"></div>
+          <div class="grid-header">A</div>
+          <div class="grid-header">B</div>
+          <div class="grid-header">C</div>
+          <div class="grid-header">D</div>
+          <div class="grid-header">E</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:8px;">
+      <button onclick="guardarPauta()">💾 Guardar pauta</button>
+      <button class="secondary" onclick="limpiarPauta()">🗑 Limpiar</button>
+    </div>
+    <div id="msg-pauta"></div>
+  </div>
+</div>
+
+<!-- TAB: CORREGIR -->
+<div class="panel" id="tab-corregir">
+  <div class="card">
+    <h2>Datos del estudiante</h2>
+    <div class="row">
+      <div>
+        <label>Nombre (opcional)</label>
+        <input type="text" id="cr-nombre" placeholder="Nombre del estudiante">
+      </div>
+      <div>
+        <label>RUT (opcional)</label>
+        <input type="text" id="cr-rut" placeholder="12.345.678-9">
+      </div>
+    </div>
+    <label>Pauta a usar</label>
+    <select id="cr-pauta"><option value="">-- Selecciona una pauta --</option></select>
+  </div>
+
+  <div class="card">
+    <h2>Imagen de la hoja</h2>
+    <label class="upload-area" for="cr-imagen">
+      <input type="file" id="cr-imagen" accept="image/*" onchange="previewImagen(this)">
+      <div id="upload-text">📷 Toca aquí para subir la foto<br><span style="font-size:0.8rem;color:#aaa">JPG o PNG</span></div>
+      <img id="preview-img" style="max-width:100%;max-height:300px;display:none;border-radius:8px;margin-top:12px;">
+    </label>
+    <div style="margin-top:16px;">
+      <button onclick="corregirHoja()">🔍 Corregir hoja</button>
+    </div>
+    <div id="msg-corr"></div>
+  </div>
+
+  <div id="resultado">
+    <div class="card">
+      <h2>Resultado</h2>
+      <div class="nota-grande" id="res-nota">–</div>
+      <div class="nota-label" id="res-label">–</div>
+      <div class="stats">
+        <div class="stat"><div class="num" id="res-correctas" style="color:#2e7d32">–</div><div class="lbl">Correctas</div></div>
+        <div class="stat"><div class="num" id="res-incorrectas" style="color:#c62828">–</div><div class="lbl">Incorrectas</div></div>
+        <div class="stat"><div class="num" id="res-omitidas" style="color:#888">–</div><div class="lbl">Omitidas</div></div>
+      </div>
+      <div class="detalle-grid" id="res-detalle"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE = '';  // mismo origen
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function showTab(nombre) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['pautas','nueva','corregir'][i] === nombre));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+nombre).classList.add('active');
+  if (nombre === 'pautas') cargarListaPautas();
+  if (nombre === 'corregir') cargarSelectPautas();
+}
+
+// ── Lista pautas ────────────────────────────────────────────────────────────
+async function cargarListaPautas() {
+  const r = await fetch(BASE+'/pautas');
+  const d = await r.json();
+  const el = document.getElementById('lista-pautas');
+  if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay pautas registradas.</p>'; return; }
+  el.innerHTML = `<table class="tabla">
+    <thead><tr><th>Nombre</th><th>Asignatura</th><th>Preguntas</th><th>ID</th><th></th></tr></thead>
+    <tbody>${d.pautas.map(p => `<tr>
+      <td><strong>${p.nombre}</strong></td>
+      <td>${p.asignatura||'—'}</td>
+      <td><span class="badge azul">${p.total_preguntas}</span></td>
+      <td style="font-family:monospace;font-size:0.8rem;color:#999">${p.id}</td>
+      <td><button class="danger" onclick="eliminarPauta('${p.id}')">Eliminar</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function eliminarPauta(id) {
+  if (!confirm('¿Eliminar esta pauta?')) return;
+  await fetch(BASE+'/pautas/'+id, {method:'DELETE'});
+  cargarListaPautas();
+}
+
+// ── Nueva pauta: grid de burbujas ──────────────────────────────────────────
+const respSeleccionadas = {};
+
+function buildGrid(containerId, inicio, fin) {
+  const grid = document.getElementById(containerId);
+  for (let q = inicio; q <= fin; q++) {
+    const numDiv = document.createElement('div');
+    numDiv.className = 'num-pregunta';
+    numDiv.textContent = q;
+    grid.appendChild(numDiv);
+    ['A','B','C','D','E'].forEach(opc => {
+      const b = document.createElement('div');
+      b.className = 'burbuja';
+      b.textContent = opc;
+      b.onclick = () => toggleBurbuja(q, opc, b);
+      b.id = `burbuja-${q}-${opc}`;
+      grid.appendChild(b);
+    });
+  }
+}
+
+function toggleBurbuja(q, opc, el) {
+  const actual = respSeleccionadas[q];
+  if (actual === opc) {
+    delete respSeleccionadas[q];
+    el.classList.remove('marcada');
+  } else {
+    if (actual) document.getElementById(`burbuja-${q}-${actual}`)?.classList.remove('marcada');
+    respSeleccionadas[q] = opc;
+    el.classList.add('marcada');
+  }
+}
+
+function limpiarPauta() {
+  Object.keys(respSeleccionadas).forEach(q => {
+    const opc = respSeleccionadas[q];
+    document.getElementById(`burbuja-${q}-${opc}`)?.classList.remove('marcada');
+    delete respSeleccionadas[q];
+  });
+}
+
+async function guardarPauta() {
+  const nombre = document.getElementById('np-nombre').value.trim();
+  if (!nombre) { alert('Ingresa un nombre para el ensayo.'); return; }
+  const total = parseInt(document.getElementById('np-total').value);
+  const asignatura = document.getElementById('np-asignatura').value.trim();
+  const respuestas = {};
+  for (let q = 1; q <= total; q++) {
+    if (respSeleccionadas[q]) respuestas[q] = respSeleccionadas[q];
+  }
+  const r = await fetch(BASE+'/pautas', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({nombre, asignatura, respuestas, total_preguntas: total}),
+  });
+  const d = await r.json();
+  const msg = document.getElementById('msg-pauta');
+  if (d.ok) {
+    msg.innerHTML = `<div class="msg ok">✅ Pauta guardada correctamente (ID: ${d.id})</div>`;
+    document.getElementById('np-nombre').value = '';
+    limpiarPauta();
+  } else {
+    msg.innerHTML = `<div class="msg err">❌ Error al guardar</div>`;
+  }
+}
+
+// ── Corregir hoja ───────────────────────────────────────────────────────────
+async function cargarSelectPautas() {
+  const r = await fetch(BASE+'/pautas');
+  const d = await r.json();
+  const sel = document.getElementById('cr-pauta');
+  sel.innerHTML = '<option value="">-- Selecciona una pauta --</option>' +
+    d.pautas.map(p => `<option value="${p.id}">${p.nombre} (${p.asignatura||p.id})</option>`).join('');
+}
+
+function previewImagen(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const img = document.getElementById('preview-img');
+  img.src = URL.createObjectURL(file);
+  img.style.display = 'block';
+  document.getElementById('upload-text').style.display = 'none';
+}
+
+async function corregirHoja() {
+  const pautaId = document.getElementById('cr-pauta').value;
+  const imgFile = document.getElementById('cr-imagen').files[0];
+  if (!pautaId) { alert('Selecciona una pauta.'); return; }
+  if (!imgFile) { alert('Selecciona una imagen.'); return; }
+
+  const msg = document.getElementById('msg-corr');
+  msg.innerHTML = '<div class="msg ok">⏳ Procesando...</div>';
+  document.getElementById('resultado').style.display = 'none';
+
+  const fd = new FormData();
+  fd.append('imagen', imgFile);
+  fd.append('pauta_id', pautaId);
+  fd.append('nombre_estudiante', document.getElementById('cr-nombre').value);
+  fd.append('rut', document.getElementById('cr-rut').value);
+
+  try {
+    const r = await fetch(BASE+'/procesar', {method:'POST', body:fd});
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.detail || 'Error');
+    msg.innerHTML = '';
+    mostrarResultado(d);
+  } catch(e) {
+    msg.innerHTML = `<div class="msg err">❌ ${e.message}</div>`;
+  }
+}
+
+function mostrarResultado(d) {
+  document.getElementById('res-nota').textContent = d.nota.toFixed(1);
+  document.getElementById('res-label').textContent =
+    `${d.porcentaje}% correcto — ${d.nota >= 4 ? '✅ Aprobado' : '❌ Reprobado'}`;
+  document.getElementById('res-correctas').textContent = d.correctas;
+  document.getElementById('res-incorrectas').textContent = d.incorrectas;
+  document.getElementById('res-omitidas').textContent = d.omitidas;
+
+  const det = document.getElementById('res-detalle');
+  det.innerHTML = Object.entries(d.detalle).map(([q, info]) =>
+    `<div class="detalle-celda ${info.resultado}" title="P${q}: ${info.respuesta||'—'} (${info.correcta})">${q}</div>`
+  ).join('');
+
+  document.getElementById('resultado').style.display = 'block';
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+buildGrid('col-izq', 1, 40);
+buildGrid('col-der', 41, 80);
+cargarListaPautas();
+</script>
+</body>
+</html>
