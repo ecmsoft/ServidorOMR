@@ -144,10 +144,18 @@ async def calibrar(imagen: UploadFile = File(...)):
         os.unlink(ruta_tmp)
 
 
-# Panel admin
+# Panel admin (profesores)
 @app.get("/", response_class=HTMLResponse)
 def panel():
     ruta_html = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    with open(ruta_html, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+# Portal alumnos (web mobile)
+@app.get("/portal", response_class=HTMLResponse)
+def portal():
+    ruta_html = os.path.join(os.path.dirname(__file__), "static", "portal.html")
     with open(ruta_html, "r", encoding="utf-8") as f:
         return f.read()
 

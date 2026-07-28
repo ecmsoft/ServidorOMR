@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#1a73e8">
+<title>Calco — Corrección de Ensayo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --azul: #1a73e8;
+    --azul-dark: #1557b0;
+    --verde: #2e7d32;
+    --rojo: #c62828;
+    --gris: #f5f7fa;
+    --texto: #1a1a2e;
+    --radio: 16px;
+  }
+
+  html, body { height: 100%; background: var(--gris); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--texto); }
+
+  /* ── Pantallas ── */
+  .screen { display: none; flex-direction: column; min-height: 100vh; }
+  .screen.active { display: flex; }
+
+  /* ── Header ── */
+  .header {
+    background: var(--azul);
+    color: white;
+    padding: 20px 20px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+  .header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+
+  /* ── Contenido ── */
+  .content { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Cards ── */
+  .card {
+    background: white;
+    border-radius: var(--radio);
+    padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  }
+  .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #333; }
+
+  /* ── Inputs ── */
+  label { font-size: 0.82rem; font-weight: 700; color: #666; display: block; margin-bottom: 5px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.4px; }
+  label:first-child { margin-top: 0; }
+
+  input, select {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e8e8e8;
+    border-radius: 12px;
+    font-size: 1rem;
+    color: var(--texto);
+    background: white;
+    outline: none;
+    transition: border 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+  input:focus, select:focus { border-color: var(--azul); }
+
+  /* ── Botón principal ── */
+  .btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 16px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    letter-spacing: 0.2px;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn:hover  { background: var(--azul-dark); }
+  .btn.secondary { background: white; color: var(--azul); border: 2px solid var(--azul); }
+  .btn.verde  { background: var(--verde); }
+  .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+  /* ── Cámara ── */
+  .camara-container {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: var(--radio);
+    overflow: hidden;
+    aspect-ratio: 3/4;
+  }
+  #video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .camara-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  /* Marco guía para la hoja */
+  .camara-frame {
+    position: absolute;
+    top: 8%;
+    left: 6%;
+    right: 6%;
+    bottom: 8%;
+    border: 3px solid rgba(255,255,255,0.7);
+    border-radius: 8px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.35);
+  }
+  .camara-frame::before,
+  .camara-frame::after,
+  .camara-frame-tl,
+  .camara-frame-br {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    border-color: white;
+    border-style: solid;
+  }
+  .camara-frame::before  { top: -3px; left: -3px; border-width: 4px 0 0 4px; border-radius: 4px 0 0 0; }
+  .camara-frame::after   { top: -3px; right: -3px; border-width: 4px 4px 0 0; border-radius: 0 4px 0 0; }
+  .camara-frame-tl       { bottom: -3px; left: -3px; border-width: 0 0 4px 4px; border-radius: 0 0 0 4px; }
+  .camara-frame-br       { bottom: -3px; right: -3px; border-width: 0 4px 4px 0; border-radius: 0 0 4px 0; }
+
+  .camara-tip {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.65);
+    color: white;
+    font-size: 0.78rem;
+    padding: 6px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+    backdrop-filter: blur(4px);
+  }
+
+  /* ── Preview foto ── */
+  #canvas { display: none; }
+  .foto-preview {
+    width: 100%;
+    border-radius: var(--radio);
+    overflow: hidden;
+    display: none;
+  }
+  .foto-preview img { width: 100%; display: block; }
+
+  /* ── Resultado ── */
+  .nota-display {
+    text-align: center;
+    padding: 24px 0 16px;
+  }
+  .nota-numero {
+    font-size: 5rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -2px;
+  }
+  .nota-numero.aprobado { color: var(--verde); }
+  .nota-numero.reprobado { color: var(--rojo); }
+  .nota-estado {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-top: 6px;
+    padding: 6px 20px;
+    border-radius: 20px;
+    display: inline-block;
+  }
+  .nota-estado.aprobado { background: #e8f5e9; color: var(--verde); }
+  .nota-estado.reprobado { background: #ffebee; color: var(--rojo); }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 16px 0;
+  }
+  .stat-box {
+    background: var(--gris);
+    border-radius: 12px;
+    padding: 12px 8px;
+    text-align: center;
+  }
+  .stat-box .num { font-size: 1.8rem; font-weight: 800; }
+  .stat-box .lbl { font-size: 0.72rem; color: #888; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-box.verde .num { color: var(--verde); }
+  .stat-box.rojo  .num { color: var(--rojo); }
+  .stat-box.gris  .num { color: #999; }
+
+  .alumno-info {
+    background: var(--gris);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 0.9rem;
+  }
+  .alumno-info strong { display: block; font-size: 1rem; margin-bottom: 2px; }
+  .alumno-info span { color: #888; }
+
+  .detalle-titulo { font-size: 0.82rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .detalle-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 5px;
+  }
+  .detalle-celda {
+    aspect-ratio: 1;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.58rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .detalle-celda .q { font-size: 0.5rem; opacity: 0.6; }
+  .detalle-celda.correcta  { background: #e8f5e9; color: var(--verde); }
+  .detalle-celda.incorrecta{ background: #ffebee; color: var(--rojo); }
+  .detalle-celda.omitida   { background: #f5f5f5; color: #bbb; }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    gap: 16px;
+  }
+  .loading.active { display: flex; }
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 5px solid #e0e0e0;
+    border-top-color: var(--azul);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading p { color: #888; font-size: 0.95rem; text-align: center; }
+
+  /* ── Msg ── */
+  .msg { padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; margin-top: 8px; }
+  .msg.err { background: #ffebee; color: var(--rojo); }
+  .msg.ok  { background: #e8f5e9; color: var(--verde); }
+
+  /* ── Pasos ── */
+  .pasos {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 0 20px 4px;
+  }
+  .paso {
+    height: 4px;
+    flex: 1;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.3);
+    transition: background 0.3s;
+  }
+  .paso.activo { background: white; }
+
+  canvas { display: none; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     PANTALLA 1: REGISTRO
+══════════════════════════════════════════════ -->
+<div class="screen active" id="screen-registro">
+  <div class="header">
+    <h1>📝 Calco</h1>
+    <p>Corrección de ensayo</p>
+    <div class="pasos" style="margin-top:12px;">
+      <div class="paso activo"></div>
+      <div class="paso"></div>
+      <div class="paso"></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <h2>Tus datos</h2>
+      <label>Nombre completo</label>
+      <input type="text" id="reg-nombre" placeholder="Juan Pérez González" autocomplete="name">
+      <label>Curso</label>
+      <input type="text" id="reg-curso" placeholder="2° Medio A">
+      <label>Ensayo a corregir</label>
+      <select id="reg-pauta">
+        <option value="">Cargando pautas...</option>
+      </select>
+    </div>
+    <button class="btn" onclick="irACaptura()">
+      Continuar → Sacar foto
+    </button>
+    <div id="msg-registro"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PANTALLA 2: CAPTURA
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-captura">
+  <div class="header">
+    <h1>📷 Capturar hoja</h1>
+    <p>Enfoca toda la hoja dentro del marco</p>
+    <div class="pasos" style="margin-top:12px;">
+      <div class="paso activo"></div>
+      <div class="paso activo"></div>
+      <div class="paso"></div>
+    </div>
+  </div>
+  <div class="content">
+    <!-- Vista cámara -->
+    <div id="vista-camara">
+      <div class="camara-container">
+        <video id="video" autoplay playsinline muted></video>
+        <div class="camara-overlay">
+          <div class="camara-frame">
+            <div class="camara-frame-tl"></div>
+            <div class="camara-frame-br"></div>
+          </div>
+          <div class="camara-tip">Alinea la hoja dentro del marco</div>
+        </div>
+      </div>
+      <br>
+      <button class="btn" id="btn-capturar" onclick="capturarFoto()">
+        📸 Tomar foto
+      </button>
+    </div>
+
+    <!-- Preview foto capturada -->
+    <div id="vista-preview" style="display:none;">
+      <div class="card" style="padding:0;overflow:hidden;">
+        <img id="preview-img" style="width:100%;display:block;">
+      </div>
+      <button class="btn verde" onclick="enviarFoto()" style="margin-top:4px;">
+        ✅ Usar esta foto
+      </button>
+      <button class="btn secondary" onclick="repetirFoto()" style="margin-top:8px;">
+        🔄 Repetir foto
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading-envio">
+      <div class="spinner"></div>
+      <p>Analizando la hoja...<br>Esto toma unos segundos</p>
+    </div>
+
+    <div id="msg-captura"></div>
+    <button class="btn secondary" onclick="irARegistro()" style="margin-top:4px;">← Volver</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     PANTALLA 3: RESULTADO
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-resultado">
+  <div class="header">
+    <h1>✅ Resultado</h1>
+    <p id="res-pauta-nombre">—</p>
+    <div class="pasos" style="margin-top:12px;">
+      <div class="paso activo"></div>
+      <div class="paso activo"></div>
+      <div class="paso activo"></div>
+    </div>
+  </div>
+  <div class="content">
+
+    <div class="alumno-info">
+      <strong id="res-nombre">—</strong>
+      <span id="res-curso">—</span>
+    </div>
+
+    <div class="card" style="padding:0 20px 20px;">
+      <div class="nota-display">
+        <div class="nota-numero" id="res-nota">—</div>
+        <div class="nota-estado" id="res-estado">—</div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-box verde">
+          <div class="num" id="res-correctas">—</div>
+          <div class="lbl">Correctas</div>
+        </div>
+        <div class="stat-box rojo">
+          <div class="num" id="res-incorrectas">—</div>
+          <div class="lbl">Incorrectas</div>
+        </div>
+        <div class="stat-box gris">
+          <div class="num" id="res-omitidas">—</div>
+          <div class="lbl">Omitidas</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="detalle-titulo">Detalle pregunta a pregunta</div>
+      <div class="detalle-grid" id="res-detalle"></div>
+    </div>
+
+    <button class="btn" onclick="nuevaCorreccion()">
+      🔁 Corregir otra hoja
+    </button>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+// ── Estado global ──────────────────────────────────────────────────────────
+const estado = { nombre: '', curso: '', pautaId: '', fotoBlob: null };
+let stream = null;
+
+// ── Navegación ────────────────────────────────────────────────────────────
+function mostrar(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ── Pantalla 1: Registro ──────────────────────────────────────────────────
+async function cargarPautas() {
+  try {
+    const r = await fetch('/pautas');
+    const d = await r.json();
+    const sel = document.getElementById('reg-pauta');
+    if (d.total === 0) {
+      sel.innerHTML = '<option value="">Sin pautas disponibles</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">— Selecciona el ensayo —</option>' +
+      d.pautas.map(p => `<option value="${p.id}">${p.nombre}${p.asignatura ? ' · '+p.asignatura : ''}</option>`).join('');
+  } catch {
+    document.getElementById('reg-pauta').innerHTML = '<option value="">Error al cargar pautas</option>';
+  }
+}
+
+function irARegistro() {
+  detenerCamara();
+  mostrar('screen-registro');
+}
+
+function irACaptura() {
+  const nombre = document.getElementById('reg-nombre').value.trim();
+  const curso  = document.getElementById('reg-curso').value.trim();
+  const pauta  = document.getElementById('reg-pauta').value;
+  const msg    = document.getElementById('msg-registro');
+
+  if (!nombre) { msg.innerHTML = '<div class="msg err">Ingresa tu nombre completo.</div>'; return; }
+  if (!curso)  { msg.innerHTML = '<div class="msg err">Ingresa tu curso.</div>'; return; }
+  if (!pauta)  { msg.innerHTML = '<div class="msg err">Selecciona el ensayo a corregir.</div>'; return; }
+
+  estado.nombre  = nombre;
+  estado.curso   = curso;
+  estado.pautaId = pauta;
+  msg.innerHTML  = '';
+
+  mostrar('screen-captura');
+  iniciarCamara();
+  resetearCaptura();
+}
+
+// ── Pantalla 2: Cámara ────────────────────────────────────────────────────
+async function iniciarCamara() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 },
+      }
+    });
+    document.getElementById('video').srcObject = stream;
+  } catch (e) {
+    document.getElementById('msg-captura').innerHTML =
+      '<div class="msg err">No se pudo acceder a la cámara. Verifica los permisos del navegador.</div>';
+  }
+}
+
+function detenerCamara() {
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+}
+
+function capturarFoto() {
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth  || 1280;
+  canvas.height = video.videoHeight || 960;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    estado.fotoBlob = blob;
+    document.getElementById('preview-img').src = URL.createObjectURL(blob);
+    document.getElementById('vista-camara').style.display = 'none';
+    document.getElementById('vista-preview').style.display = 'block';
+    detenerCamara();
+  }, 'image/jpeg', 0.92);
+}
+
+function repetirFoto() {
+  resetearCaptura();
+  iniciarCamara();
+}
+
+function resetearCaptura() {
+  document.getElementById('vista-camara').style.display = 'block';
+  document.getElementById('vista-preview').style.display = 'none';
+  document.getElementById('loading-envio').classList.remove('active');
+  document.getElementById('msg-captura').innerHTML = '';
+  estado.fotoBlob = null;
+}
+
+async function enviarFoto() {
+  if (!estado.fotoBlob) return;
+
+  document.getElementById('vista-preview').style.display = 'none';
+  document.getElementById('loading-envio').classList.add('active');
+  document.getElementById('msg-captura').innerHTML = '';
+
+  const fd = new FormData();
+  fd.append('imagen', estado.fotoBlob, 'hoja.jpg');
+  fd.append('pauta_id', estado.pautaId);
+  fd.append('nombre_estudiante', estado.nombre);
+  fd.append('rut', '');
+
+  try {
+    const r = await fetch('/procesar', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.detail || 'Error al procesar');
+    mostrarResultado(d);
+  } catch (e) {
+    document.getElementById('loading-envio').classList.remove('active');
+    document.getElementById('vista-preview').style.display = 'block';
+    document.getElementById('msg-captura').innerHTML =
+      `<div class="msg err">❌ ${e.message}</div>`;
+  }
+}
+
+// ── Pantalla 3: Resultado ─────────────────────────────────────────────────
+function mostrarResultado(d) {
+  const aprobado = d.nota >= 4.0;
+
+  document.getElementById('res-nombre').textContent = estado.nombre;
+  document.getElementById('res-curso').textContent  = estado.curso;
+  document.getElementById('res-pauta-nombre').textContent = d.pauta || '';
+
+  const notaEl   = document.getElementById('res-nota');
+  const estadoEl = document.getElementById('res-estado');
+  notaEl.textContent   = d.nota.toFixed(1);
+  notaEl.className     = 'nota-numero ' + (aprobado ? 'aprobado' : 'reprobado');
+  estadoEl.textContent = aprobado ? '✅ Aprobado' : '❌ Reprobado';
+  estadoEl.className   = 'nota-estado ' + (aprobado ? 'aprobado' : 'reprobado');
+
+  document.getElementById('res-correctas').textContent   = d.correctas;
+  document.getElementById('res-incorrectas').textContent = d.incorrectas;
+  document.getElementById('res-omitidas').textContent    = d.omitidas;
+
+  // Detalle
+  const grid = document.getElementById('res-detalle');
+  grid.innerHTML = Object.entries(d.detalle).map(([q, info]) =>
+    `<div class="detalle-celda ${info.resultado}" title="P${q}: marcó ${info.respuesta||'—'}, correcta ${info.correcta}">
+      <span class="q">P${q}</span>
+      <span>${info.respuesta || '—'}</span>
+    </div>`
+  ).join('');
+
+  mostrar('screen-resultado');
+}
+
+function nuevaCorreccion() {
+  // Mantiene nombre/curso pero limpia foto
+  estado.fotoBlob = null;
+  resetearCaptura();
+  mostrar('screen-captura');
+  iniciarCamara();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+cargarPautas();
+</script>
+</body>
+</html>
