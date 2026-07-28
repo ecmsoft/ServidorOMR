@@ -160,5 +160,20 @@ def portal():
         return f.read()
 
 
+# Hojas de respuesta imprimibles
+@app.get("/hoja/80", response_class=HTMLResponse)
+def hoja_80():
+    ruta_html = os.path.join(os.path.dirname(__file__), "static", "hoja_80.html")
+    with open(ruta_html, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/hoja/65", response_class=HTMLResponse)
+def hoja_65():
+    ruta_html = os.path.join(os.path.dirname(__file__), "static", "hoja_65.html")
+    with open(ruta_html, "r", encoding="utf-8") as f:
+        return f.read()
+
+
 # Archivos estáticos
 app.mount("/static", StaticFiles(directory="static"), name="static")
