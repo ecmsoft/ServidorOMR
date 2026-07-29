@@ -305,9 +305,12 @@
       <label>Curso</label>
       <input type="text" id="reg-curso" placeholder="2° Medio A">
       <label>Ensayo a corregir</label>
-      <select id="reg-pauta">
-        <option value="">Cargando pautas...</option>
-      </select>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="reg-pauta" style="flex:1;">
+          <option value="">Cargando pautas...</option>
+        </select>
+        <button onclick="cargarPautas()" type="button" style="padding:14px 12px;border:2px solid #e8e8e8;border-radius:12px;background:white;font-size:1rem;cursor:pointer;flex-shrink:0;" title="Recargar">🔄</button>
+      </div>
     </div>
     <button class="btn" onclick="irACaptura()">
       Continuar → Sacar foto
