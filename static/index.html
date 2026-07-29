@@ -104,6 +104,24 @@
   </div>
 
   <div class="card">
+    <h2>📋 Pegar desde Excel</h2>
+    <p style="font-size:0.85rem;color:#666;margin-bottom:12px;">
+      En Excel, selecciona la columna con las respuestas correctas (A, B, C, D o E) y pega aquí.<br>
+      Acepta una respuesta por fila, o separadas por coma/espacio.
+    </p>
+    <textarea id="excel-paste"
+      placeholder="A&#10;B&#10;C&#10;D&#10;E&#10;A&#10;..."
+      style="width:100%;height:120px;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;
+             font-family:monospace;font-size:0.9rem;resize:vertical;outline:none;"
+      oninput="previewPaste(this.value)"></textarea>
+    <div id="paste-preview" style="font-size:0.8rem;color:#888;margin-top:6px;min-height:18px;"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <button onclick="cargarDesdeTexto()">⬆️ Cargar en grilla</button>
+      <button class="secondary" onclick="document.getElementById('excel-paste').value='';document.getElementById('paste-preview').textContent='';">✕ Borrar</button>
+    </div>
+  </div>
+
+  <div class="card">
     <h2>Respuestas correctas</h2>
     <div class="grid-2col">
       <div>
@@ -258,6 +276,44 @@ function limpiarPauta() {
     document.getElementById(`burbuja-${q}-${opc}`)?.classList.remove('marcada');
     delete respSeleccionadas[q];
   });
+}
+
+function parsearRespuestas(texto) {
+  // Acepta: saltos de línea, comas, puntos y coma, espacios, tabs
+  return texto
+    .toUpperCase()
+    .split(/[\n\r,;\t ]+/)
+    .map(s => s.trim())
+    .filter(s => ['A','B','C','D','E'].includes(s));
+}
+
+function previewPaste(texto) {
+  const lista = parsearRespuestas(texto);
+  const prev = document.getElementById('paste-preview');
+  if (lista.length === 0) { prev.textContent = ''; return; }
+  prev.textContent = `✅ ${lista.length} respuestas detectadas: ${lista.slice(0,10).join(' ')}${lista.length > 10 ? ' ...' : ''}`;
+}
+
+function cargarDesdeTexto() {
+  const texto = document.getElementById('excel-paste').value;
+  const lista = parsearRespuestas(texto);
+  if (lista.length === 0) {
+    alert('No se encontraron respuestas válidas. Usa las letras A, B, C, D o E.');
+    return;
+  }
+  // Limpiar grilla primero
+  limpiarPauta();
+  // Cargar respuestas
+  lista.forEach((opc, i) => {
+    const q = i + 1;
+    const el = document.getElementById(`burbuja-${q}-${opc}`);
+    if (el) {
+      respSeleccionadas[q] = opc;
+      el.classList.add('marcada');
+    }
+  });
+  document.getElementById('paste-preview').innerHTML =
+    `<span style="color:#2e7d32;font-weight:700;">✅ ${lista.length} respuestas cargadas en la grilla</span>`;
 }
 
 async function guardarPauta() {

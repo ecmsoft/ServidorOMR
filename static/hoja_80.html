@@ -4,11 +4,7 @@
 <meta charset="UTF-8">
 <title>Hoja de Respuestas — 80 Preguntas</title>
 <style>
-  @page {
-    size: letter portrait;
-    margin: 0;
-  }
-
+  @page { size: letter portrait; margin: 0; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -18,266 +14,256 @@
     background: white;
     color: black;
     overflow: hidden;
+    position: relative;
   }
 
-  /* ── Marcadores de esquina (cuadrados negros para calibración OMR) ── */
+  /* ── Marcadores de esquina 8x8mm ── */
   .marker {
     position: absolute;
     width: 8mm;
     height: 8mm;
     background: black;
+    z-index: 10;
   }
-  .marker.tl { top: 6mm;   left: 6mm; }
-  .marker.tr { top: 6mm;   right: 6mm; }
-  .marker.bl { bottom: 6mm; left: 6mm; }
-  .marker.br { bottom: 6mm; right: 6mm; }
+  .marker.tl { top: 5mm;  left: 5mm; }
+  .marker.tr { top: 5mm;  right: 5mm; }
+  .marker.bl { bottom: 5mm; left: 5mm; }
+  .marker.br { bottom: 5mm; right: 5mm; }
 
   /* ── Encabezado ── */
   .header {
     position: absolute;
-    top: 8mm;
-    left: 20mm;
-    right: 20mm;
-    text-align: center;
+    top: 7mm;
+    left: 18mm;
+    right: 18mm;
   }
-
   .titulo {
-    font-size: 13pt;
+    font-size: 11pt;
     font-weight: bold;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    border-bottom: 2px solid black;
-    padding-bottom: 2mm;
-    margin-bottom: 3mm;
-  }
-
-  .subtitulo {
-    font-size: 9pt;
-    color: #444;
-    margin-bottom: 3mm;
-  }
-
-  .campos {
-    display: flex;
-    gap: 4mm;
-    margin-top: 2mm;
-  }
-
-  .campo {
-    flex: 1;
-    border-bottom: 1px solid black;
-    padding-bottom: 1mm;
-    font-size: 7.5pt;
-    text-align: left;
-  }
-  .campo.angosto { flex: 0 0 28mm; }
-
-  .campo-label {
-    font-size: 6.5pt;
-    font-weight: bold;
-    color: #555;
+    text-align: center;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    border-bottom: 1.5px solid black;
+    padding-bottom: 1.5mm;
     margin-bottom: 2mm;
   }
-
-  /* ── Instrucciones ── */
+  .campos {
+    display: flex;
+    gap: 3mm;
+    margin-bottom: 1.5mm;
+  }
+  .campo { flex: 1; }
+  .campo.ch { flex: 0 0 30mm; }
+  .campo-label {
+    font-size: 5.5pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: #555;
+    margin-bottom: 1mm;
+  }
+  .campo-linea {
+    border-bottom: 0.8px solid black;
+    height: 4mm;
+  }
   .instrucciones {
-    position: absolute;
-    top: 46mm;
-    left: 20mm;
-    right: 20mm;
-    font-size: 6.5pt;
-    color: #444;
-    border: 0.5pt solid #aaa;
-    padding: 1.5mm 3mm;
-    border-radius: 1mm;
+    font-size: 5.5pt;
+    color: #555;
+    border: 0.5px solid #aaa;
+    padding: 1mm 2mm;
+    border-radius: 0.8mm;
+    margin-top: 1.5mm;
+    line-height: 1.4;
   }
 
-  /* ── Área de preguntas ── */
-  .area-preguntas {
+  /* ── Área preguntas: 4 columnas × 20 filas ── */
+  .area {
     position: absolute;
-    top: 56mm;
-    left: 14mm;
-    right: 14mm;
-    bottom: 18mm;
+    top: 46mm;
+    left: 11mm;
+    right: 11mm;
+    bottom: 14mm;
     display: flex;
-    gap: 5mm;
+    gap: 3mm;
   }
 
   .columna {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 0;
   }
 
-  /* ── Encabezado de columna ── */
-  .col-header {
+  /* ── Cabecera de columna ── */
+  .col-head {
     display: flex;
     align-items: center;
-    margin-bottom: 1.5mm;
+    border-bottom: 1px solid #333;
     padding-bottom: 1mm;
-    border-bottom: 1pt solid black;
+    margin-bottom: 1mm;
   }
-  .col-header .num-h { width: 7mm; font-size: 6pt; font-weight: bold; color: #666; }
-  .col-header .opc-h {
+  .col-head .nh {
+    width: 6mm;
+    font-size: 5pt;
+    font-weight: bold;
+    color: #555;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .col-head .oh {
     flex: 1;
     display: flex;
-    justify-content: space-around;
-    font-size: 7pt;
+    justify-content: space-between;
+    padding: 0 0.5mm;
+  }
+  .col-head .oh span {
+    font-size: 6pt;
     font-weight: bold;
+    width: 5mm;
+    text-align: center;
   }
 
-  /* ── Fila de pregunta ── */
+  /* ── Fila: burbuja 5mm + separación 3mm = 8mm ── */
   .fila {
     display: flex;
     align-items: center;
-    height: 5.35mm;
+    height: 8mm;
     border-bottom: 0.3pt dotted #ddd;
   }
-  .fila:nth-child(even) { background: #f9f9f9; }
+  .fila:nth-child(odd) { background: #f7f7f7; }
 
-  .num-p {
-    width: 7mm;
-    font-size: 6.5pt;
-    font-weight: bold;
-    color: #333;
-    text-align: right;
-    padding-right: 1.5mm;
-    flex-shrink: 0;
-  }
-
-  .burbujas {
-    flex: 1;
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-  }
-
-  .burbuja {
-    width: 5mm;
-    height: 5mm;
-    border-radius: 50%;
-    border: 1pt solid #333;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .np {
+    width: 6mm;
     font-size: 5.5pt;
     font-weight: bold;
     color: #444;
+    text-align: right;
+    padding-right: 1mm;
     flex-shrink: 0;
+    line-height: 1;
   }
 
-  /* ── Separador de mitad ── */
-  .separador {
-    width: 0.3pt;
-    background: #bbb;
-    margin: 0 1mm;
-    flex-shrink: 0;
-  }
-
-  /* ── Pie de página ── */
-  .footer {
-    position: absolute;
-    bottom: 4mm;
-    left: 20mm;
-    right: 20mm;
+  /* Burbujas distribuidas con espacio entre ellas */
+  .burbujas {
+    flex: 1;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 6pt;
-    color: #888;
-    border-top: 0.5pt solid #ccc;
-    padding-top: 1.5mm;
+    padding: 0 0.5mm;
+  }
+
+  /* Burbuja 5x5mm */
+  .b {
+    width: 5mm;
+    height: 5mm;
+    border-radius: 50%;
+    border: 0.8pt solid #333;
+    flex-shrink: 0;
+  }
+
+  /* ── Separador vertical ── */
+  .sep {
+    width: 0.5pt;
+    background: #ccc;
+    flex-shrink: 0;
+  }
+
+  /* ── Pie ── */
+  .footer {
+    position: absolute;
+    bottom: 3.5mm;
+    left: 18mm;
+    right: 18mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 5.5pt;
+    color: #999;
+    border-top: 0.5px solid #ccc;
+    padding-top: 1mm;
   }
 
   @media print {
     body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .no-print { display: none; }
   }
 </style>
 </head>
 <body>
 
-<!-- Marcadores OMR -->
 <div class="marker tl"></div>
 <div class="marker tr"></div>
 <div class="marker bl"></div>
 <div class="marker br"></div>
 
-<!-- Encabezado -->
 <div class="header">
   <div class="titulo">Hoja de Respuestas — 80 Preguntas</div>
-  <div class="subtitulo">Marque con lápiz negro dentro del círculo. Una sola alternativa por pregunta.</div>
   <div class="campos">
     <div class="campo">
       <div class="campo-label">Nombre completo</div>
-      &nbsp;
+      <div class="campo-linea"></div>
     </div>
-    <div class="campo angosto">
+    <div class="campo ch">
       <div class="campo-label">Curso</div>
-      &nbsp;
+      <div class="campo-linea"></div>
     </div>
-    <div class="campo angosto">
+    <div class="campo ch">
       <div class="campo-label">Fecha</div>
-      &nbsp;
+      <div class="campo-linea"></div>
     </div>
+  </div>
+  <div class="instrucciones">
+    ⚫ Rellene completamente el círculo &nbsp;|&nbsp;
+    ✏️ Lápiz grafito N°2 &nbsp;|&nbsp;
+    🚫 Una sola alternativa por pregunta &nbsp;|&nbsp;
+    🔄 Borre completamente para corregir
   </div>
 </div>
 
-<!-- Instrucciones -->
-<div class="instrucciones">
-  ⚫ Rellene completamente el círculo de la alternativa elegida &nbsp;|&nbsp;
-  ✏️ Use lápiz grafito N°2 &nbsp;|&nbsp;
-  🚫 No marque más de una alternativa por pregunta &nbsp;|&nbsp;
-  🔄 Para corregir, borre completamente
+<div class="area">
+  <div class="columna" id="col-1"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-2"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-3"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-4"></div>
 </div>
 
-<!-- Preguntas -->
-<div class="area-preguntas">
-  <!-- Columna izquierda: 1-40 -->
-  <div class="columna" id="col-izq"></div>
-  <div class="separador"></div>
-  <!-- Columna derecha: 41-80 -->
-  <div class="columna" id="col-der"></div>
-</div>
-
-<!-- Pie -->
 <div class="footer">
   <span>Calco — Sistema de Corrección Automática</span>
-  <span>Hoja 80 preguntas · 5 alternativas (A–E)</span>
+  <span>80 preguntas · 5 alternativas (A – E)</span>
 </div>
 
 <script>
-function buildColumna(id, inicio, fin) {
+function buildCol(id, inicio, fin) {
   const col = document.getElementById(id);
 
-  // Header
-  const hdr = document.createElement('div');
-  hdr.className = 'col-header';
-  hdr.innerHTML = `<div class="num-h">N°</div>
-    <div class="opc-h"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span></div>`;
-  col.appendChild(hdr);
+  const head = document.createElement('div');
+  head.className = 'col-head';
+  head.innerHTML = `<div class="nh">N°</div>
+    <div class="oh">
+      <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+    </div>`;
+  col.appendChild(head);
 
   for (let q = inicio; q <= fin; q++) {
     const fila = document.createElement('div');
     fila.className = 'fila';
     fila.innerHTML = `
-      <div class="num-p">${q}</div>
+      <div class="np">${q}</div>
       <div class="burbujas">
-        <div class="burbuja"></div>
-        <div class="burbuja"></div>
-        <div class="burbuja"></div>
-        <div class="burbuja"></div>
-        <div class="burbuja"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
       </div>`;
     col.appendChild(fila);
   }
 }
 
-buildColumna('col-izq', 1, 40);
-buildColumna('col-der', 41, 80);
+// 4 columnas × 20 preguntas
+buildCol('col-1',  1, 20);
+buildCol('col-2', 21, 40);
+buildCol('col-3', 41, 60);
+buildCol('col-4', 61, 80);
 </script>
 </body>
 </html>
