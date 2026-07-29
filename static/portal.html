@@ -501,19 +501,35 @@ function detenerCamara() {
   if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
 }
 
+function dataURLtoBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const mime  = parts[0].match(/:(.*?);/)[1];
+  const bstr  = atob(parts[1]);
+  const arr   = new Uint8Array(bstr.length);
+  for (let i = 0; i < bstr.length; i++) arr[i] = bstr.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
 function capturarFoto() {
   const video  = document.getElementById('video');
   const canvas = document.getElementById('canvas');
   canvas.width  = video.videoWidth  || 1280;
   canvas.height = video.videoHeight || 960;
   canvas.getContext('2d').drawImage(video, 0, 0);
-  canvas.toBlob(blob => {
+
+  // iOS Safari no soporta canvas.toBlob() de forma fiable → usar toDataURL
+  try {
+    const dataURL = canvas.toDataURL('image/jpeg', 0.92);
+    const blob    = dataURLtoBlob(dataURL);
     estado.fotoBlob = blob;
-    document.getElementById('preview-img').src = URL.createObjectURL(blob);
+    document.getElementById('preview-img').src = dataURL;
     document.getElementById('vista-camara').style.display = 'none';
     document.getElementById('vista-preview').style.display = 'block';
     detenerCamara();
-  }, 'image/jpeg', 0.92);
+  } catch (e) {
+    document.getElementById('msg-captura').innerHTML =
+      '<div class="msg err">❌ Error al capturar la foto. Intenta de nuevo.</div>';
+  }
 }
 
 function repetirFoto() {
