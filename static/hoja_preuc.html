@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Hoja de Respuestas — 80 Preguntas</title>
+<style>
+  @page { size: letter portrait; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    width: 215.9mm;
+    height: 279.4mm;
+    font-family: Arial, Helvetica, sans-serif;
+    background: white;
+    color: black;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── Marcadores de esquina ── */
+  .marker {
+    position: absolute;
+    width: 8mm;
+    height: 8mm;
+    background: black;
+    z-index: 10;
+  }
+  .marker.tl { top: 4mm;  left: 4mm; }
+  .marker.tr { top: 4mm;  right: 4mm; }
+  .marker.bl { bottom: 4mm; left: 4mm; }
+  .marker.br { bottom: 4mm; right: 4mm; }
+
+  /* ── Encabezado compacto ── */
+  .header {
+    position: absolute;
+    top: 8mm;
+    left: 16mm;
+    right: 16mm;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5mm;
+  }
+
+  .titulo-box {
+    border: 2px solid black;
+    padding: 1.5mm 8mm;
+    font-size: 12pt;
+    font-weight: bold;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+
+  .instrucciones {
+    font-size: 9pt;
+    color: #444;
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* ── Área de preguntas: 4 columnas ── */
+  .area {
+    position: absolute;
+    top: 26mm;
+    left: 10mm;
+    right: 10mm;
+    bottom: 9mm;
+    display: flex;
+    gap: 0;
+  }
+
+  .columna {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 2mm;
+  }
+
+  /* ── Cabecera de columna ── */
+  .col-head {
+    display: flex;
+    align-items: center;
+    background: black;
+    color: white;
+    height: 5.5mm;
+    flex-shrink: 0;
+  }
+  .col-head .nh {
+    width: 7mm;
+    font-size: 5.5pt;
+    font-weight: bold;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .col-head .oh {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    gap: 2mm;
+    padding: 0 1.5mm;
+  }
+  .col-head .oh span {
+    font-size: 6.5pt;
+    font-weight: bold;
+    width: 5mm;
+    text-align: center;
+  }
+
+  /* ── Fila de pregunta: 11mm ── */
+  /* 20 filas × 11mm = 220mm — cabe bien con 4 columnas */
+  .fila {
+    display: flex;
+    align-items: center;
+    height: 11mm;
+    border-bottom: 0.4pt solid #e0e0e0;
+    flex-shrink: 0;
+  }
+
+  .np {
+    width: 7mm;
+    font-size: 8pt;
+    font-weight: bold;
+    color: #333;
+    text-align: right;
+    padding-right: 1.5mm;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  .burbujas {
+    flex: 1;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 2mm;
+    padding: 0 1.5mm;
+  }
+
+  /* Burbuja 5×5mm */
+  .b {
+    width: 5mm;
+    height: 5mm;
+    border-radius: 50%;
+    border: 0.8pt solid #444;
+    flex-shrink: 0;
+  }
+
+  /* ── Línea divisoria central ── */
+  .sep {
+    width: 1px;
+    background: #999;
+    flex-shrink: 0;
+  }
+
+  /* ── Pie ── */
+  .footer {
+    position: absolute;
+    bottom: 2.5mm;
+    left: 16mm;
+    right: 16mm;
+    display: flex;
+    justify-content: space-between;
+    font-size: 5.5pt;
+    color: #aaa;
+    border-top: 0.5px solid #ddd;
+    padding-top: 0.8mm;
+  }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+</head>
+<body>
+
+<div class="marker tl"></div>
+<div class="marker tr"></div>
+<div class="marker bl"></div>
+<div class="marker br"></div>
+
+<div class="header">
+  <div class="titulo-box">Hoja de Respuestas</div>
+  <div class="instrucciones">
+    Rellene el círculo completamente &nbsp;·&nbsp; Lápiz grafito N°2 &nbsp;·&nbsp; Una alternativa por pregunta &nbsp;·&nbsp; Borre bien para corregir
+  </div>
+</div>
+
+<div class="area">
+  <div class="columna" id="col-1"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-2"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-3"></div>
+  <div class="sep"></div>
+  <div class="columna" id="col-4"></div>
+</div>
+
+<div class="footer">
+  <span>Calco · Sistema de Corrección Automática</span>
+  <span>80 preguntas &nbsp;·&nbsp; Alternativas A B C D E</span>
+</div>
+
+<script>
+function buildCol(id, inicio, fin) {
+  const col = document.getElementById(id);
+
+  // Cabecera
+  const head = document.createElement('div');
+  head.className = 'col-head';
+  head.innerHTML = `
+    <div class="nh">N°</div>
+    <div class="oh">
+      <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span>
+    </div>`;
+  col.appendChild(head);
+
+  // Filas
+  for (let q = inicio; q <= fin; q++) {
+    const fila = document.createElement('div');
+    fila.className = 'fila';
+    fila.innerHTML = `
+      <div class="np">${q}</div>
+      <div class="burbujas">
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+        <div class="b"></div>
+      </div>`;
+    col.appendChild(fila);
+  }
+}
+
+// 4 columnas × 20 preguntas
+buildCol('col-1',  1, 20);
+buildCol('col-2', 21, 40);
+buildCol('col-3', 41, 60);
+buildCol('col-4', 61, 80);
+</script>
+</body>
+</html>

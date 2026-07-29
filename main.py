@@ -18,7 +18,7 @@ app.add_middleware(
 )
 
 # ── Almacenamiento de pautas en JSON ─────────────────────────────────────────
-PAUTAS_FILE = "pautas.json"
+PAUTAS_FILE = os.path.join(os.path.dirname(__file__), "pautas.json")
 
 def cargar_pautas() -> dict:
     if os.path.exists(PAUTAS_FILE):
@@ -171,6 +171,13 @@ def hoja_80():
 @app.get("/hoja/65", response_class=HTMLResponse)
 def hoja_65():
     ruta_html = os.path.join(os.path.dirname(__file__), "static", "hoja_65.html")
+    with open(ruta_html, "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/hoja/preuc", response_class=HTMLResponse)
+def hoja_preuc():
+    ruta_html = os.path.join(os.path.dirname(__file__), "static", "hoja_preuc.html")
     with open(ruta_html, "r", encoding="utf-8") as f:
         return f.read()
 
