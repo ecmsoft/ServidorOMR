@@ -8,7 +8,7 @@ import json, os, uuid, shutil, tempfile, io
 import cv2
 import numpy as np
 
-from omr import procesar_hoja, calcular_nota, corregir_perspectiva, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja
+from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -162,7 +162,7 @@ async def debug_imagen(imagen: UploadFile = File(...)):
         ruta_tmp = tmp.name
 
     try:
-        img = cv2.imread(ruta_tmp)
+        img = leer_imagen(ruta_tmp)
         if img is None:
             raise HTTPException(status_code=400, detail="No se pudo leer la imagen")
 

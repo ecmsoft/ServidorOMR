@@ -6,6 +6,30 @@ Hoja: hoja_preuc.html (215.9 × 279.4mm)
 
 import cv2
 import numpy as np
+from PIL import Image
+import io
+
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()   # habilita HEIC/HEIF en Pillow
+except ImportError:
+    pass
+
+
+def leer_imagen(ruta: str) -> np.ndarray:
+    """
+    Carga una imagen en cualquier formato (JPEG, PNG, HEIC, WebP, etc.)
+    y la retorna como array BGR de OpenCV.
+    """
+    # Intentar con OpenCV primero (JPEG/PNG rápido)
+    img = cv2.imread(ruta)
+    if img is not None:
+        return img
+
+    # Fallback: Pillow (soporta HEIC, WebP, TIFF, etc.)
+    pil = Image.open(ruta).convert('RGB')
+    arr = np.array(pil)
+    return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
 
 # ── Dimensiones de trabajo ────────────────────────────────────────────────────
 ANCHO = 1240   # px (carta horizontal)
@@ -122,7 +146,7 @@ def procesar_hoja(ruta_imagen: str) -> dict:
     Retorna dict {1: 'A', 2: 'C', ..., 80: None} con la respuesta detectada
     (None = omitida).
     """
-    img = cv2.imread(ruta_imagen)
+    img = leer_imagen(ruta_imagen)
     if img is None:
         raise ValueError(f"No se pudo leer la imagen: {ruta_imagen}")
 
