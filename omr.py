@@ -29,20 +29,10 @@ def _es_heic(ruta: str) -> bool:
 
 def _convertir_heic_a_jpg(ruta_heic: str) -> str:
     """
-    Convierte un archivo HEIC a JPEG usando ImageMagick (convert).
-    Retorna la ruta del archivo JPEG temporal.
+    Convierte un archivo HEIC a JPEG usando heif-convert (libheif-examples).
+    Retorna la ruta del archivo JPEG temporal, o None si falla.
     """
     ruta_jpg = ruta_heic + '_converted.jpg'
-    try:
-        result = subprocess.run(
-            ['convert', ruta_heic, ruta_jpg],
-            capture_output=True, timeout=30
-        )
-        if result.returncode == 0 and os.path.exists(ruta_jpg):
-            return ruta_jpg
-    except (subprocess.TimeoutExpired, FileNotFoundError):
-        pass
-    # Fallback: heif-convert (si está disponible)
     try:
         result = subprocess.run(
             ['heif-convert', ruta_heic, ruta_jpg],
