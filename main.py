@@ -8,7 +8,7 @@ import json, os, uuid, shutil, tempfile, io
 import cv2
 import numpy as np
 
-from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja
+from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -102,6 +102,7 @@ async def procesar(
     imagen: UploadFile = File(...),
     pauta_id: str = "",
     nombre_estudiante: str = "",
+    curso: str = "",
     rut: str = "",
 ):
     pauta_id = pauta_id.strip()
@@ -119,15 +120,20 @@ async def procesar(
 
     try:
         respuestas = procesar_hoja(ruta_tmp)
-        resultado  = calcular_nota(respuestas, pauta["respuestas"], pauta.get("total_preguntas", 80))
+        total      = pauta.get("total_preguntas", 80)
+        resultado  = calcular_nota(respuestas, pauta["respuestas"], total)
     finally:
         os.unlink(ruta_tmp)
+
+    txt = generar_txt(nombre_estudiante, curso, pauta["nombre"], respuestas, total)
 
     return {
         "ok": True,
         "estudiante": nombre_estudiante,
+        "curso": curso,
         "rut": rut,
         "pauta": pauta["nombre"],
+        "txt": txt,
         **resultado,
     }
 
@@ -205,9 +211,44 @@ async def debug_imagen(imagen: UploadFile = File(...)):
                                     (cx - RADIO_BURBUJA - 20, cy + 4),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.3, (100, 100, 100), 1)
 
+        # ── Overlay: bloque de texto con respuestas detectadas ────────────
+        OPCIONES = ['A', 'B', 'C', 'D', 'E']
+        _LETRA_A_NUM = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+
+        # Reconstruir respuestas desde el visual ya dibujado
+        respuestas_debug = {}
+        for col_idx, xs in enumerate(OPC_X):
+            offset_q = col_idx * N_FILAS
+            for fila in range(N_FILAS):
+                num_q  = fila + 1 + offset_q
+                y_rel  = Y_INICIO + (Y_FIN - Y_INICIO) * fila / (N_FILAS - 1)
+                cy     = int(y_rel * ALTO)
+                marcadas = [OPCIONES[i] for i, x_rel in enumerate(xs)
+                            if leer_burbuja(binaria, int(x_rel * ANCHO), cy) >= UMBRAL_MARCADO]
+                respuestas_debug[num_q] = marcadas[0] if len(marcadas) == 1 else (marcadas[0] if marcadas else None)
+
+        # Panel lateral derecho con el listado
+        panel_w = 220
+        panel = np.ones((ALTO, panel_w, 3), dtype=np.uint8) * 240
+        font  = cv2.FONT_HERSHEY_SIMPLEX
+        y_txt = 20
+        cv2.putText(panel, "RESPUESTAS", (10, y_txt), font, 0.5, (0, 0, 0), 1)
+        y_txt += 20
+        for q in range(1, 81):
+            letra = respuestas_debug.get(q)
+            num   = _LETRA_A_NUM.get(letra, 0)
+            texto = f"P{q:02d}: {letra or '-'} ({num})"
+            color = (0, 120, 0) if letra else (150, 150, 150)
+            cv2.putText(panel, texto, (10, y_txt), font, 0.38, color, 1)
+            y_txt += 21
+            if y_txt > ALTO - 10:
+                break
+
+        visual_con_panel = np.hstack([visual, panel])
+
         # Escalar a la mitad para que no sea tan pesado
-        h, w = visual.shape[:2]
-        visual_small = cv2.resize(visual, (w // 2, h // 2))
+        h, w = visual_con_panel.shape[:2]
+        visual_small = cv2.resize(visual_con_panel, (w // 2, h // 2))
 
         _, buf = cv2.imencode('.jpg', visual_small, [cv2.IMWRITE_JPEG_QUALITY, 85])
         return StreamingResponse(io.BytesIO(buf.tobytes()), media_type="image/jpeg")

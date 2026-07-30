@@ -313,6 +313,25 @@ def procesar_hoja(ruta_imagen: str) -> dict:
     return respuestas
 
 
+# ── Generación de archivo TXT ─────────────────────────────────────────────────
+_LETRA_A_NUM = {'A': 1, 'B': 2, 'C': 3, 'D': 4, 'E': 5}
+
+def generar_txt(nombre: str, curso: str, nombre_pauta: str,
+                respuestas: dict, total: int = 80) -> str:
+    """
+    Genera el contenido del archivo TXT de resultados.
+    Respuestas codificadas: A=1, B=2, C=3, D=4, E=5, omitida=0
+    """
+    nums = [str(_LETRA_A_NUM.get(respuestas.get(q), 0)) for q in range(1, total + 1)]
+    lineas = [
+        f"NOMBRE: {nombre}",
+        f"CURSO: {curso}",
+        f"PAUTA: {nombre_pauta}",
+        f"RESPUESTAS: {','.join(nums)}",
+    ]
+    return '\n'.join(lineas)
+
+
 # ── Calificación ──────────────────────────────────────────────────────────────
 def calcular_nota(respuestas: dict, pauta: dict, total_preguntas: int = 80) -> dict:
     """
