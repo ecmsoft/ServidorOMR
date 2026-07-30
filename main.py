@@ -205,6 +205,11 @@ async def debug_imagen(imagen: UploadFile = File(...)):
 
                     cv2.circle(visual, (cx, cy), RADIO_BURBUJA, color, grosor)
 
+                    # Fracción de relleno sobre la burbuja (para calibración)
+                    cv2.putText(visual, f"{fraccion:.2f}",
+                                (cx - 10, cy - RADIO_BURBUJA - 3),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.25, (80, 80, 80), 1)
+
                     # Número de pregunta en la primera burbuja de cada fila
                     if i == 0:
                         cv2.putText(visual, str(num_q),

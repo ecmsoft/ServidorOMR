@@ -101,8 +101,8 @@ Y_FIN    = 0.880
 N_FILAS  = 20   # preguntas por columna
 
 # ── Parámetros de detección ───────────────────────────────────────────────────
-RADIO_BURBUJA  = 12    # px en imagen normalizada (burbuja real ~15px de radio)
-UMBRAL_MARCADO = 0.25  # fracción de píxeles oscuros para considerar marcada
+RADIO_BURBUJA  = 10    # px en imagen normalizada (interior de la burbuja)
+UMBRAL_MARCADO = 0.50  # fracción de píxeles oscuros para considerar marcada
 
 OPCIONES = ['A', 'B', 'C', 'D', 'E']
 
