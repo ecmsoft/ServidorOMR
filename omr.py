@@ -8,12 +8,51 @@ import cv2
 import numpy as np
 from PIL import Image
 import io
+import subprocess
+import tempfile
+import os
 
-try:
-    from pillow_heif import register_heif_opener
-    register_heif_opener()   # habilita HEIC/HEIF en Pillow
-except ImportError:
-    pass
+
+def _es_heic(ruta: str) -> bool:
+    """Detecta archivos HEIC/HEIF por extensión o magic bytes."""
+    ext = os.path.splitext(ruta)[1].lower()
+    if ext in ('.heic', '.heif'):
+        return True
+    try:
+        with open(ruta, 'rb') as f:
+            header = f.read(12)
+        # Magic bytes HEIC: 'ftyp' en offset 4
+        return header[4:8] == b'ftyp'
+    except Exception:
+        return False
+
+
+def _convertir_heic_a_jpg(ruta_heic: str) -> str:
+    """
+    Convierte un archivo HEIC a JPEG usando ImageMagick (convert).
+    Retorna la ruta del archivo JPEG temporal.
+    """
+    ruta_jpg = ruta_heic + '_converted.jpg'
+    try:
+        result = subprocess.run(
+            ['convert', ruta_heic, ruta_jpg],
+            capture_output=True, timeout=30
+        )
+        if result.returncode == 0 and os.path.exists(ruta_jpg):
+            return ruta_jpg
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    # Fallback: heif-convert (si está disponible)
+    try:
+        result = subprocess.run(
+            ['heif-convert', ruta_heic, ruta_jpg],
+            capture_output=True, timeout=30
+        )
+        if result.returncode == 0 and os.path.exists(ruta_jpg):
+            return ruta_jpg
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+    return None
 
 
 def leer_imagen(ruta: str) -> np.ndarray:
@@ -26,7 +65,19 @@ def leer_imagen(ruta: str) -> np.ndarray:
     if img is not None:
         return img
 
-    # Fallback: Pillow (soporta HEIC, WebP, TIFF, etc.)
+    # Si es HEIC, convertir con ImageMagick
+    if _es_heic(ruta):
+        ruta_jpg = _convertir_heic_a_jpg(ruta)
+        if ruta_jpg:
+            try:
+                img = cv2.imread(ruta_jpg)
+                return img
+            finally:
+                if os.path.exists(ruta_jpg):
+                    os.unlink(ruta_jpg)
+        raise ValueError(f"No se pudo convertir HEIC: {ruta}. Asegúrate de que ImageMagick esté instalado con soporte HEIC.")
+
+    # Fallback genérico: Pillow
     pil = Image.open(ruta).convert('RGB')
     arr = np.array(pil)
     return cv2.cvtColor(arr, cv2.COLOR_RGB2BGR)
