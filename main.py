@@ -162,9 +162,12 @@ async def debug_imagen(imagen: UploadFile = File(...)):
         ruta_tmp = tmp.name
 
     try:
-        img = leer_imagen(ruta_tmp)
+        try:
+            img = leer_imagen(ruta_tmp)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"No se pudo leer la imagen: {e}")
         if img is None:
-            raise HTTPException(status_code=400, detail="No se pudo leer la imagen")
+            raise HTTPException(status_code=400, detail="Formato de imagen no soportado")
 
         # Corregir perspectiva
         img_norm = corregir_perspectiva(img)
@@ -209,6 +212,10 @@ async def debug_imagen(imagen: UploadFile = File(...)):
         _, buf = cv2.imencode('.jpg', visual_small, [cv2.IMWRITE_JPEG_QUALITY, 85])
         return StreamingResponse(io.BytesIO(buf.tobytes()), media_type="image/jpeg")
 
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error interno: {e}")
     finally:
         os.unlink(ruta_tmp)
 
