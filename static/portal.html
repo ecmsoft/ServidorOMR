@@ -315,6 +315,7 @@
     <button class="btn" onclick="irACaptura()">
       Continuar → Sacar foto
     </button>
+    <div id="debug-pautas" style="font-size:0.75rem;color:#888;word-break:break-all;margin-top:4px;"></div>
     <div id="msg-registro"></div>
   </div>
 </div>
@@ -443,18 +444,26 @@ function mostrar(id) {
 
 // ── Pantalla 1: Registro ──────────────────────────────────────────────────
 async function cargarPautas() {
+  const sel = document.getElementById('reg-pauta');
+  const dbg = document.getElementById('debug-pautas');
+  sel.innerHTML = '<option value="">⏳ Cargando...</option>';
+  dbg.textContent = '';
   try {
     const r = await fetch('/pautas');
-    const d = await r.json();
-    const sel = document.getElementById('reg-pauta');
-    if (d.total === 0) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const texto = await r.text();
+    dbg.textContent = 'Respuesta: ' + texto;
+    const d = JSON.parse(texto);
+    if (!d.pautas || d.pautas.length === 0) {
       sel.innerHTML = '<option value="">Sin pautas disponibles</option>';
       return;
     }
     sel.innerHTML = '<option value="">— Selecciona el ensayo —</option>' +
-      d.pautas.map(p => `<option value="${p.id}">${p.nombre}${p.asignatura ? ' · '+p.asignatura : ''}</option>`).join('');
-  } catch {
-    document.getElementById('reg-pauta').innerHTML = '<option value="">Error al cargar pautas</option>';
+      d.pautas.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
+    dbg.textContent = '';
+  } catch(e) {
+    sel.innerHTML = '<option value="">❌ ' + e.message + '</option>';
+    dbg.textContent = 'Error: ' + e.message;
   }
 }
 
