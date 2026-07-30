@@ -1,12 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List
-import json, os, uuid, shutil, tempfile
+import json, os, uuid, shutil, tempfile, io
+import cv2
+import numpy as np
 
-from omr import procesar_hoja, calcular_nota
+from omr import procesar_hoja, calcular_nota, corregir_perspectiva, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -102,9 +104,10 @@ async def procesar(
     nombre_estudiante: str = "",
     rut: str = "",
 ):
+    pauta_id = pauta_id.strip()
     pautas = cargar_pautas()
     if pauta_id not in pautas:
-        raise HTTPException(status_code=404, detail=f"Pauta '{pauta_id}' no encontrada")
+        raise HTTPException(status_code=404, detail=f"Pauta '{pauta_id}' no encontrada. Disponibles: {list(pautas.keys())}")
 
     pauta = pautas[pauta_id]
 
@@ -129,7 +132,7 @@ async def procesar(
     }
 
 
-# Calibración (devuelve imagen con burbujas detectadas)
+# Calibración JSON
 @app.post("/calibrar")
 async def calibrar(imagen: UploadFile = File(...)):
     suffix = os.path.splitext(imagen.filename)[1] or ".jpg"
@@ -140,6 +143,72 @@ async def calibrar(imagen: UploadFile = File(...)):
         respuestas = procesar_hoja(ruta_tmp)
         detectadas = sum(1 for v in respuestas.values() if v is not None)
         return {"ok": True, "detectadas": detectadas, "respuestas": respuestas}
+    finally:
+        os.unlink(ruta_tmp)
+
+
+# Debug visual — devuelve imagen con burbujas marcadas
+@app.post("/debug-imagen")
+async def debug_imagen(imagen: UploadFile = File(...)):
+    """
+    Recibe una foto de hoja, aplica corrección de perspectiva y devuelve
+    la imagen procesada con:
+      - Círculo VERDE: burbuja detectada como marcada
+      - Círculo ROJO:  posición esperada (no marcada)
+    """
+    suffix = os.path.splitext(imagen.filename)[1] or ".jpg"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+        shutil.copyfileobj(imagen.file, tmp)
+        ruta_tmp = tmp.name
+
+    try:
+        img = cv2.imread(ruta_tmp)
+        if img is None:
+            raise HTTPException(status_code=400, detail="No se pudo leer la imagen")
+
+        # Corregir perspectiva
+        img_norm = corregir_perspectiva(img)
+
+        # Binarizar
+        gris = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY)
+        _, binaria = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+        # Convertir binarizada a BGR para dibujar encima en color
+        visual = cv2.cvtColor(binaria, cv2.COLOR_GRAY2BGR)
+
+        OPCIONES = ['A', 'B', 'C', 'D', 'E']
+
+        # Dibujar posiciones de burbujas
+        for col_idx, xs in enumerate(OPC_X):
+            offset_q = col_idx * N_FILAS
+            for fila in range(N_FILAS):
+                num_q = fila + 1 + offset_q
+                y_rel = Y_INICIO + (Y_FIN - Y_INICIO) * fila / (N_FILAS - 1)
+                cy = int(y_rel * ALTO)
+
+                for i, x_rel in enumerate(xs):
+                    cx = int(x_rel * ANCHO)
+                    fraccion = leer_burbuja(binaria, cx, cy)
+                    marcada = fraccion >= UMBRAL_MARCADO
+
+                    color = (0, 200, 0) if marcada else (0, 0, 220)   # verde / rojo
+                    grosor = -1 if marcada else 2                       # relleno / borde
+
+                    cv2.circle(visual, (cx, cy), RADIO_BURBUJA, color, grosor)
+
+                    # Número de pregunta en la primera burbuja de cada fila
+                    if i == 0:
+                        cv2.putText(visual, str(num_q),
+                                    (cx - RADIO_BURBUJA - 20, cy + 4),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, (100, 100, 100), 1)
+
+        # Escalar a la mitad para que no sea tan pesado
+        h, w = visual.shape[:2]
+        visual_small = cv2.resize(visual, (w // 2, h // 2))
+
+        _, buf = cv2.imencode('.jpg', visual_small, [cv2.IMWRITE_JPEG_QUALITY, 85])
+        return StreamingResponse(io.BytesIO(buf.tobytes()), media_type="image/jpeg")
+
     finally:
         os.unlink(ruta_tmp)
 
