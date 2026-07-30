@@ -205,32 +205,46 @@ def _detectar_hoja_blanca(imagen: np.ndarray):
 
 
 # ── Corrección de perspectiva (combinada) ─────────────────────────────────────
+# Los marcadores están a 4mm del borde, son 8×8mm → centro a 8mm del borde
+_MX = 8 / 215.9 * ANCHO   # ~46 px
+_MY = 8 / 279.4 * ALTO    # ~50 px
+
+# Posición CONOCIDA de los centros de marcadores en imagen normalizada
+_DST_MARCADORES = np.array([
+    [_MX,        _MY       ],   # TL
+    [ANCHO - _MX, _MY      ],   # TR
+    [_MX,        ALTO - _MY],   # BL
+    [ANCHO - _MX, ALTO - _MY],  # BR
+], dtype=np.float32)
+
+_DST_FULL = np.array([
+    [0,     0    ],
+    [ANCHO, 0    ],
+    [0,     ALTO ],
+    [ANCHO, ALTO ],
+], dtype=np.float32)
+
+
 def corregir_perspectiva(imagen: np.ndarray) -> np.ndarray:
     """
-    1. Detecta hoja blanca → warp inicial a ANCHO × ALTO
-    2. Dentro de la imagen warpeada, busca marcadores de esquina para afinar
-    Si no hay hoja, redimensiona directamente.
+    1. Warp grueso detectando contorno de hoja blanca
+    2. Refinamiento preciso usando los 4 marcadores de esquina,
+       mapeándolos a su posición CONOCIDA (no a las esquinas del canvas)
     """
-    dst = np.array([
-        [0,     0    ],
-        [ANCHO, 0    ],
-        [0,     ALTO ],
-        [ANCHO, ALTO ],
-    ], dtype=np.float32)
-
-    # Paso 1: warp grueso con contorno de hoja
+    # ── Paso 1: detectar y warpear la hoja blanca ──────────────────────────
     esquinas_hoja = _detectar_hoja_blanca(imagen)
     if esquinas_hoja is None:
         img_warp = cv2.resize(imagen, (ANCHO, ALTO))
     else:
-        M = cv2.getPerspectiveTransform(esquinas_hoja, dst)
-        img_warp = cv2.warpPerspective(imagen, M, (ANCHO, ALTO))
+        M1 = cv2.getPerspectiveTransform(esquinas_hoja, _DST_FULL)
+        img_warp = cv2.warpPerspective(imagen, M1, (ANCHO, ALTO))
 
-    # Paso 2: refinar con marcadores de esquina (si existen)
+    # ── Paso 2: refinar con marcadores (si se detectan) ───────────────────
     gris_warp = cv2.cvtColor(img_warp, cv2.COLOR_BGR2GRAY) if len(img_warp.shape) == 3 else img_warp.copy()
     marcadores = _detectar_marcadores(gris_warp)
     if marcadores is not None:
-        M2 = cv2.getPerspectiveTransform(marcadores, dst)
+        # Mapear centros detectados → posición conocida en coordenadas normalizadas
+        M2 = cv2.getPerspectiveTransform(marcadores, _DST_MARCADORES)
         img_warp = cv2.warpPerspective(img_warp, M2, (ANCHO, ALTO))
 
     return img_warp
