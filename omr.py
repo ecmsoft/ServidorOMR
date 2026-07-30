@@ -107,50 +107,66 @@ UMBRAL_MARCADO = 0.25  # fracción de píxeles oscuros para considerar marcada
 OPCIONES = ['A', 'B', 'C', 'D', 'E']
 
 
-# ── Detección de esquinas ─────────────────────────────────────────────────────
-def detectar_esquinas(img_gris: np.ndarray):
+# ── Detección de la hoja (papel blanco vs fondo oscuro) ──────────────────────
+def _ordenar_esquinas(pts: np.ndarray) -> np.ndarray:
+    """Ordena 4 puntos en [TL, TR, BL, BR]."""
+    pts = pts.reshape(4, 2).astype(np.float32)
+    s    = pts.sum(axis=1)
+    diff = pts[:, 0] - pts[:, 1]
+    tl = pts[np.argmin(s)]
+    br = pts[np.argmax(s)]
+    tr = pts[np.argmax(diff)]
+    bl = pts[np.argmin(diff)]
+    return np.array([tl, tr, bl, br], dtype=np.float32)
+
+
+def detectar_hoja(imagen: np.ndarray):
     """
-    Detecta los 4 marcadores cuadrados negros de las esquinas.
-    Retorna array [TL, TR, BL, BR] o None si no encuentra 4.
+    Detecta el contorno de la hoja de papel (región blanca/clara)
+    contra el fondo oscuro de la foto.
+    Retorna array [TL, TR, BL, BR] o None.
     """
-    _, binaria = cv2.threshold(img_gris, 60, 255, cv2.THRESH_BINARY_INV)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY) if len(imagen.shape) == 3 else imagen.copy()
+    h, w = gris.shape
+
+    # Umbral: hoja es clara (>120) sobre fondo oscuro
+    _, binaria = cv2.threshold(gris, 120, 255, cv2.THRESH_BINARY)
+
+    # Morfología para rellenar huecos internos (texto, burbujas)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
     binaria = cv2.morphologyEx(binaria, cv2.MORPH_CLOSE, kernel)
+    kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 30))
+    binaria = cv2.morphologyEx(binaria, cv2.MORPH_OPEN, kernel2)
+
     contornos, _ = cv2.findContours(binaria, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    candidatos = []
-    for c in contornos:
-        area = cv2.contourArea(c)
-        if 500 < area < 8000:
-            x, y, cw, ch = cv2.boundingRect(c)
-            aspecto = cw / ch if ch > 0 else 0
-            if 0.6 < aspecto < 1.6:
-                candidatos.append((x + cw // 2, y + ch // 2))
-
-    if len(candidatos) < 4:
+    if not contornos:
         return None
 
-    # Ordenar TL, TR, BL, BR
-    candidatos.sort(key=lambda p: p[0] + p[1])
-    tl = candidatos[0]
-    br = candidatos[-1]
-    candidatos.sort(key=lambda p: p[0] - p[1])
-    tr = candidatos[-1]
-    bl_candidates = [p for p in candidatos if p != tl and p != tr and p != br]
-    bl = bl_candidates[0] if bl_candidates else candidatos[1]
+    # El contorno más grande = la hoja
+    c = max(contornos, key=cv2.contourArea)
+    if cv2.contourArea(c) < 0.15 * h * w:
+        return None   # muy pequeño para ser la hoja
 
-    return np.array([tl, tr, bl, br], dtype=np.float32)
+    # Aproximar a cuadrilátero
+    peri  = cv2.arcLength(c, True)
+    approx = cv2.approxPolyDP(c, 0.02 * peri, True)
+
+    if len(approx) == 4:
+        return _ordenar_esquinas(approx)
+
+    # Fallback: rectángulo mínimo de área
+    rect = cv2.minAreaRect(c)
+    box  = cv2.boxPoints(rect)
+    return _ordenar_esquinas(box)
 
 
 # ── Corrección de perspectiva ─────────────────────────────────────────────────
 def corregir_perspectiva(imagen: np.ndarray) -> np.ndarray:
     """
-    Usa los 4 marcadores de esquina para "aplanar" la hoja
-    y normalizarla a ANCHO × ALTO píxeles.
-    Sin marcadores: redimensiona directamente.
+    Detecta la hoja blanca, corrige perspectiva y normaliza a ANCHO × ALTO px.
+    Si no detecta la hoja, redimensiona directamente (fallback).
     """
-    gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY) if len(imagen.shape) == 3 else imagen.copy()
-    esquinas = detectar_esquinas(gris)
+    esquinas = detectar_hoja(imagen)
 
     if esquinas is None:
         return cv2.resize(imagen, (ANCHO, ALTO))
