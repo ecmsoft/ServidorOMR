@@ -5,58 +5,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Calco — Panel OMR</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg: #0b0d12;
+    --bg-elev: #14171d;
+    --card: #1b1f27;
+    --border: rgba(255,255,255,0.08);
+    --accent: #ff9300;
+    --accent-dark: #e08400;
+    --accent-soft: rgba(255,147,0,0.14);
+    --text: #f5f6f7;
+    --text-dim: #9aa1ab;
+    --text-faint: #6b7280;
+    --verde: #22c55e;
+    --verde-bg: rgba(34,197,94,0.14);
+    --rojo: #f87171;
+    --rojo-bg: rgba(248,113,113,0.14);
+    --radius: 14px;
+  }
+
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; color: #1a1a2e; }
-  header { background: #1a73e8; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-size: 1.4rem; font-weight: 700; }
-  header span { font-size: 0.9rem; opacity: 0.85; }
-  .tabs { display: flex; background: white; border-bottom: 2px solid #e0e0e0; padding: 0 24px; }
-  .tab { padding: 14px 20px; cursor: pointer; font-weight: 600; color: #666; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
-  .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
-  .tab:hover { color: #1a73e8; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--bg-elev); border-bottom: 1px solid var(--border); color: var(--text); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-family: 'Poppins', sans-serif; font-size: 1.4rem; font-weight: 700; }
+  header h1::before { content: '●'; color: var(--accent); margin-right: 8px; font-size: 0.9rem; }
+  header span { font-size: 0.9rem; color: var(--text-dim); }
+  .tabs { display: flex; background: var(--bg-elev); border-bottom: 1px solid var(--border); padding: 0 24px; overflow-x: auto; }
+  .tab { padding: 14px 20px; cursor: pointer; font-weight: 600; color: var(--text-dim); border-bottom: 3px solid transparent; margin-bottom: -1px; transition: all 0.2s; white-space: nowrap; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--accent); }
   .panel { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
   .panel.active { display: block; }
-  .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #333; }
-  input, select { width: 100%; padding: 10px 12px; border: 1.5px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; transition: border 0.2s; }
-  input:focus, select:focus { border-color: #1a73e8; }
-  label { font-size: 0.85rem; font-weight: 600; color: #555; display: block; margin-bottom: 4px; margin-top: 12px; }
-  button { padding: 10px 20px; background: #1a73e8; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: background 0.2s; }
-  button:hover { background: #1557b0; }
-  button.secondary { background: white; color: #1a73e8; border: 1.5px solid #1a73e8; }
-  button.danger { background: #e53935; }
-  button.danger:hover { background: #b71c1c; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
+  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+  input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.95rem; color: var(--text); outline: none; transition: border 0.2s; }
+  input:focus, select:focus { border-color: var(--accent); }
+  label { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 4px; margin-top: 12px; }
+  button { padding: 10px 20px; background: var(--accent); color: #14100a; border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: background 0.2s; }
+  button:hover { background: var(--accent-dark); }
+  button.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  button.danger { background: var(--rojo); color: #1a0a0a; }
+  button.danger:hover { background: #ef4444; }
   .grid-opciones { display: grid; grid-template-columns: 40px repeat(5, 1fr); gap: 4px; margin-bottom: 8px; }
-  .grid-header { font-weight: 700; text-align: center; padding: 6px; font-size: 0.85rem; color: #555; }
+  .grid-header { font-weight: 700; text-align: center; padding: 6px; font-size: 0.85rem; color: var(--text-dim); }
   .fila-pregunta { display: contents; }
-  .num-pregunta { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 0.8rem; color: #888; font-weight: 600; }
-  .burbuja { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid #ddd; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #999; transition: all 0.15s; background: white; }
-  .burbuja.marcada { background: #1a73e8; border-color: #1a73e8; color: white; }
+  .num-pregunta { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 0.8rem; color: var(--text-faint); font-weight: 600; }
+  .burbuja { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--text-faint); transition: all 0.15s; background: var(--bg); }
+  .burbuja.marcada { background: var(--accent); border-color: var(--accent); color: #14100a; }
   .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .tabla { width: 100%; border-collapse: collapse; }
-  .tabla th { background: #f5f7fa; padding: 10px 12px; text-align: left; font-size: 0.85rem; color: #555; border-bottom: 2px solid #e0e0e0; }
-  .tabla td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
-  .tabla tr:hover td { background: #fafafa; }
+  .tabla th { background: var(--bg-elev); padding: 10px 12px; text-align: left; font-size: 0.85rem; color: var(--text-dim); border-bottom: 2px solid var(--border); }
+  .tabla td { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 0.9rem; color: var(--text); }
+  .tabla tr:hover td { background: rgba(255,255,255,0.03); }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; }
-  .badge.verde { background: #e8f5e9; color: #2e7d32; }
-  .badge.rojo { background: #ffebee; color: #c62828; }
-  .badge.azul { background: #e3f2fd; color: #1565c0; }
-  .nota-grande { font-size: 3rem; font-weight: 800; color: #1a73e8; text-align: center; margin: 16px 0 4px; }
-  .nota-label { text-align: center; color: #888; font-size: 0.9rem; margin-bottom: 16px; }
+  .badge.verde { background: var(--verde-bg); color: var(--verde); }
+  .badge.rojo { background: var(--rojo-bg); color: var(--rojo); }
+  .badge.azul { background: var(--accent-soft); color: var(--accent); }
+  .nota-grande { font-size: 3rem; font-weight: 800; color: var(--accent); text-align: center; margin: 16px 0 4px; font-family: 'Poppins', sans-serif; }
+  .nota-label { text-align: center; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 16px; }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
-  .stat { text-align: center; padding: 12px; background: #f5f7fa; border-radius: 8px; }
+  .stat { text-align: center; padding: 12px; background: var(--bg-elev); border-radius: 8px; }
   .stat .num { font-size: 1.6rem; font-weight: 800; }
-  .stat .lbl { font-size: 0.78rem; color: #888; }
+  .stat .lbl { font-size: 0.78rem; color: var(--text-dim); }
   .detalle-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 12px; }
   .detalle-celda { padding: 4px; border-radius: 4px; text-align: center; font-size: 0.7rem; font-weight: 600; }
-  .detalle-celda.correcta { background: #e8f5e9; color: #2e7d32; }
-  .detalle-celda.incorrecta { background: #ffebee; color: #c62828; }
-  .detalle-celda.omitida { background: #f5f5f5; color: #bbb; }
+  .detalle-celda.correcta { background: var(--verde-bg); color: var(--verde); }
+  .detalle-celda.incorrecta { background: var(--rojo-bg); color: var(--rojo); }
+  .detalle-celda.omitida { background: rgba(255,255,255,0.05); color: var(--text-faint); }
   .msg { padding: 12px 16px; border-radius: 8px; margin: 8px 0; font-size: 0.9rem; }
-  .msg.ok { background: #e8f5e9; color: #2e7d32; }
-  .msg.err { background: #ffebee; color: #c62828; }
-  .upload-area { border: 2px dashed #ccc; border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
-  .upload-area:hover { border-color: #1a73e8; background: #f0f7ff; }
+  .msg.ok { background: var(--verde-bg); color: var(--verde); }
+  .msg.err { background: var(--rojo-bg); color: var(--rojo); }
+  .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .upload-area:hover { border-color: var(--accent); background: var(--accent-soft); }
   .upload-area input { display: none; }
   .row { display: flex; gap: 12px; align-items: flex-end; }
   .row > * { flex: 1; }
@@ -107,16 +128,16 @@
 
   <div class="card">
     <h2>📋 Pegar desde Excel</h2>
-    <p style="font-size:0.85rem;color:#666;margin-bottom:12px;">
+    <p style="font-size:0.85rem;color:#9aa1ab;margin-bottom:12px;">
       En Excel, selecciona la columna con las respuestas correctas (A, B, C, D o E) y pega aquí.<br>
       Acepta una respuesta por fila, o separadas por coma/espacio.
     </p>
     <textarea id="excel-paste"
       placeholder="A&#10;B&#10;C&#10;D&#10;E&#10;A&#10;..."
-      style="width:100%;height:120px;padding:10px 12px;border:1.5px solid #ddd;border-radius:8px;
-             font-family:monospace;font-size:0.9rem;resize:vertical;outline:none;"
+      style="width:100%;height:120px;padding:10px 12px;border:1.5px solid rgba(255,255,255,0.08);border-radius:8px;
+             background:#0b0d12;color:#f5f6f7;font-family:monospace;font-size:0.9rem;resize:vertical;outline:none;"
       oninput="previewPaste(this.value)"></textarea>
-    <div id="paste-preview" style="font-size:0.8rem;color:#888;margin-top:6px;min-height:18px;"></div>
+    <div id="paste-preview" style="font-size:0.8rem;color:#9aa1ab;margin-top:6px;min-height:18px;"></div>
     <div style="margin-top:10px;display:flex;gap:8px;">
       <button onclick="cargarDesdeTexto()">⬆️ Cargar en grilla</button>
       <button class="secondary" onclick="document.getElementById('excel-paste').value='';document.getElementById('paste-preview').textContent='';">✕ Borrar</button>
@@ -194,9 +215,9 @@
       <div class="nota-grande" id="res-nota">–</div>
       <div class="nota-label" id="res-label">–</div>
       <div class="stats">
-        <div class="stat"><div class="num" id="res-correctas" style="color:#2e7d32">–</div><div class="lbl">Correctas</div></div>
-        <div class="stat"><div class="num" id="res-incorrectas" style="color:#c62828">–</div><div class="lbl">Incorrectas</div></div>
-        <div class="stat"><div class="num" id="res-omitidas" style="color:#888">–</div><div class="lbl">Omitidas</div></div>
+        <div class="stat"><div class="num" id="res-correctas" style="color:#22c55e">–</div><div class="lbl">Correctas</div></div>
+        <div class="stat"><div class="num" id="res-incorrectas" style="color:#f87171">–</div><div class="lbl">Incorrectas</div></div>
+        <div class="stat"><div class="num" id="res-omitidas" style="color:#9aa1ab">–</div><div class="lbl">Omitidas</div></div>
       </div>
       <div class="detalle-grid" id="res-detalle"></div>
     </div>
@@ -222,10 +243,10 @@
 <div class="panel" id="tab-debug">
   <div class="card">
     <h2>🔬 Debug — Imagen post-procesada</h2>
-    <p style="font-size:0.9rem;color:#666;margin-bottom:16px;">
+    <p style="font-size:0.9rem;color:#9aa1ab;margin-bottom:16px;">
       Sube una foto de la hoja y verás la imagen corregida con los círculos de detección:
-      <span style="color:#2e7d32;font-weight:700;">● Verde = marcada</span> &nbsp;
-      <span style="color:#c62828;font-weight:700;">● Rojo = posición esperada (vacía)</span>
+      <span style="color:#22c55e;font-weight:700;">● Verde = marcada</span> &nbsp;
+      <span style="color:#f87171;font-weight:700;">● Rojo = posición esperada (vacía)</span>
     </p>
     <label>Foto de la hoja</label>
     <input type="file" id="debug-file" accept="image/*" onchange="enviarDebug()">
@@ -375,7 +396,7 @@ function cargarDesdeTexto() {
     }
   });
   document.getElementById('paste-preview').innerHTML =
-    `<span style="color:#2e7d32;font-weight:700;">✅ ${lista.length} respuestas cargadas en la grilla</span>`;
+    `<span style="color:#22c55e;font-weight:700;">✅ ${lista.length} respuestas cargadas en la grilla</span>`;
 }
 
 async function guardarPauta() {
@@ -484,8 +505,8 @@ async function enviarDebug() {
     const blob = await r.blob();
     const url  = URL.createObjectURL(blob);
     document.getElementById('debug-resultado').innerHTML =
-      `<img src="${url}" style="width:100%;border-radius:8px;border:1px solid #ddd;" alt="Debug OMR">
-       <p style="font-size:0.8rem;color:#888;margin-top:8px;">
+      `<img src="${url}" style="width:100%;border-radius:8px;border:1px solid rgba(255,255,255,0.08);" alt="Debug OMR">
+       <p style="font-size:0.8rem;color:#9aa1ab;margin-top:8px;">
          Imagen normalizada a 1240×1754px con posiciones de burbujas marcadas.
        </p>`;
   } catch(e) {
@@ -497,7 +518,7 @@ async function enviarDebug() {
       if (j.detail) detalle = j.detail;
     } catch {}
     document.getElementById('debug-resultado').innerHTML =
-      `<p style="color:#c62828;">❌ ${detalle}</p>`;
+      `<p style="color:#f87171;">❌ ${detalle}</p>`;
   } finally {
     document.getElementById('debug-loading').style.display = 'none';
   }

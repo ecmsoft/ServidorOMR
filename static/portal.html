@@ -4,22 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#1a73e8">
+<meta name="theme-color" content="#0b0d12">
 <title>Calco — Corrección de Ensayo</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   :root {
-    --azul: #1a73e8;
-    --azul-dark: #1557b0;
-    --verde: #2e7d32;
-    --rojo: #c62828;
-    --gris: #f5f7fa;
-    --texto: #1a1a2e;
+    --bg: #0b0d12;
+    --bg-elev: #161a21;
+    --card: #1b1f27;
+    --border: rgba(255,255,255,0.08);
+    --accent: #ff9300;
+    --accent-dark: #e08400;
+    --accent-soft: rgba(255,147,0,0.14);
+    --texto: #f5f6f7;
+    --texto-dim: #9aa1ab;
+    --texto-faint: #6b7280;
+    --verde: #22c55e;
+    --verde-bg: rgba(34,197,94,0.14);
+    --rojo: #f87171;
+    --rojo-bg: rgba(248,113,113,0.14);
     --radio: 16px;
   }
 
-  html, body { height: 100%; background: var(--gris); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--texto); }
+  html, body { height: 100%; background: var(--bg); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--texto); }
 
   /* ── Pantallas ── */
   .screen { display: none; flex-direction: column; min-height: 100vh; }
@@ -27,47 +37,49 @@
 
   /* ── Header ── */
   .header {
-    background: var(--azul);
-    color: white;
+    background: var(--bg-elev);
+    border-bottom: 1px solid var(--border);
+    color: var(--texto);
     padding: 20px 20px 16px;
     position: sticky;
     top: 0;
     z-index: 10;
   }
-  .header h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
-  .header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 2px; }
+  .header h1 { font-family: 'Poppins', sans-serif; font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
+  .header p  { font-size: 0.85rem; color: var(--texto-dim); margin-top: 2px; }
 
   /* ── Contenido ── */
   .content { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
 
   /* ── Cards ── */
   .card {
-    background: white;
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: var(--radio);
     padding: 20px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
-  .card h2 { font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: #333; }
+  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--texto); }
 
   /* ── Inputs ── */
-  label { font-size: 0.82rem; font-weight: 700; color: #666; display: block; margin-bottom: 5px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.4px; }
+  label { font-size: 0.82rem; font-weight: 700; color: var(--texto-dim); display: block; margin-bottom: 5px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.4px; }
   label:first-child { margin-top: 0; }
 
   input, select {
     width: 100%;
     padding: 14px 16px;
-    border: 2px solid #e8e8e8;
+    border: 2px solid var(--border);
     border-radius: 12px;
     font-size: 1rem;
     color: var(--texto);
-    background: white;
+    background: var(--bg);
     outline: none;
     transition: border 0.2s;
     -webkit-appearance: none;
     appearance: none;
   }
-  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
-  input:focus, select:focus { border-color: var(--azul); }
+  select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239aa1ab' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 16px center; padding-right: 40px; }
+  input:focus, select:focus { border-color: var(--accent); }
 
   /* ── Botón principal ── */
   .btn {
@@ -77,10 +89,11 @@
     gap: 8px;
     width: 100%;
     padding: 16px;
-    background: var(--azul);
-    color: white;
+    background: var(--accent);
+    color: #14100a;
     border: none;
-    border-radius: 14px;
+    border-radius: 999px;
+    font-family: 'Poppins', sans-serif;
     font-size: 1.05rem;
     font-weight: 700;
     cursor: pointer;
@@ -88,10 +101,10 @@
     letter-spacing: 0.2px;
   }
   .btn:active { transform: scale(0.98); }
-  .btn:hover  { background: var(--azul-dark); }
-  .btn.secondary { background: white; color: var(--azul); border: 2px solid var(--azul); }
-  .btn.verde  { background: var(--verde); }
-  .btn:disabled { background: #ccc; cursor: not-allowed; }
+  .btn:hover  { background: var(--accent-dark); }
+  .btn.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+  .btn.verde  { background: var(--verde); color: #0b1f13; }
+  .btn:disabled { background: #3a3f47; color: #8a8f97; cursor: not-allowed; }
 
   /* ── Cámara ── */
   .camara-container {
@@ -101,6 +114,7 @@
     border-radius: var(--radio);
     overflow: hidden;
     aspect-ratio: 3/4;
+    border: 1px solid var(--border);
   }
   #video {
     width: 100%;
@@ -132,7 +146,7 @@
     position: absolute;
     width: 24px;
     height: 24px;
-    border-color: white;
+    border-color: var(--accent);
     border-style: solid;
   }
   .camara-frame::before  { top: -3px; left: -3px; border-width: 4px 0 0 4px; border-radius: 4px 0 0 0; }
@@ -185,8 +199,8 @@
     border-radius: 20px;
     display: inline-block;
   }
-  .nota-estado.aprobado { background: #e8f5e9; color: var(--verde); }
-  .nota-estado.reprobado { background: #ffebee; color: var(--rojo); }
+  .nota-estado.aprobado { background: var(--verde-bg); color: var(--verde); }
+  .nota-estado.reprobado { background: var(--rojo-bg); color: var(--rojo); }
 
   .stats-row {
     display: grid;
@@ -195,27 +209,29 @@
     margin: 16px 0;
   }
   .stat-box {
-    background: var(--gris);
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px 8px;
     text-align: center;
   }
-  .stat-box .num { font-size: 1.8rem; font-weight: 800; }
-  .stat-box .lbl { font-size: 0.72rem; color: #888; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .stat-box .num { font-size: 1.8rem; font-weight: 800; font-family: 'Poppins', sans-serif; }
+  .stat-box .lbl { font-size: 0.72rem; color: var(--texto-dim); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.3px; }
   .stat-box.verde .num { color: var(--verde); }
   .stat-box.rojo  .num { color: var(--rojo); }
-  .stat-box.gris  .num { color: #999; }
+  .stat-box.gris  .num { color: var(--texto-dim); }
 
   .alumno-info {
-    background: var(--gris);
+    background: var(--bg-elev);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px 16px;
     font-size: 0.9rem;
   }
-  .alumno-info strong { display: block; font-size: 1rem; margin-bottom: 2px; }
-  .alumno-info span { color: #888; }
+  .alumno-info strong { display: block; font-size: 1rem; margin-bottom: 2px; color: var(--texto); }
+  .alumno-info span { color: var(--texto-dim); }
 
-  .detalle-titulo { font-size: 0.82rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+  .detalle-titulo { font-size: 0.82rem; font-weight: 700; color: var(--texto-dim); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
   .detalle-grid {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
@@ -233,9 +249,9 @@
     line-height: 1.2;
   }
   .detalle-celda .q { font-size: 0.5rem; opacity: 0.6; }
-  .detalle-celda.correcta  { background: #e8f5e9; color: var(--verde); }
-  .detalle-celda.incorrecta{ background: #ffebee; color: var(--rojo); }
-  .detalle-celda.omitida   { background: #f5f5f5; color: #bbb; }
+  .detalle-celda.correcta  { background: var(--verde-bg); color: var(--verde); }
+  .detalle-celda.incorrecta{ background: var(--rojo-bg); color: var(--rojo); }
+  .detalle-celda.omitida   { background: rgba(255,255,255,0.05); color: var(--texto-faint); }
 
   /* ── Loading ── */
   .loading {
@@ -250,18 +266,18 @@
   .spinner {
     width: 48px;
     height: 48px;
-    border: 5px solid #e0e0e0;
-    border-top-color: var(--azul);
+    border: 5px solid rgba(255,255,255,0.12);
+    border-top-color: var(--accent);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .loading p { color: #888; font-size: 0.95rem; text-align: center; }
+  .loading p { color: var(--texto-dim); font-size: 0.95rem; text-align: center; }
 
   /* ── Msg ── */
   .msg { padding: 12px 16px; border-radius: 10px; font-size: 0.9rem; margin-top: 8px; }
-  .msg.err { background: #ffebee; color: var(--rojo); }
-  .msg.ok  { background: #e8f5e9; color: var(--verde); }
+  .msg.err { background: var(--rojo-bg); color: var(--rojo); }
+  .msg.ok  { background: var(--verde-bg); color: var(--verde); }
 
   /* ── Pasos ── */
   .pasos {
@@ -274,10 +290,10 @@
     height: 4px;
     flex: 1;
     border-radius: 2px;
-    background: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.12);
     transition: background 0.3s;
   }
-  .paso.activo { background: white; }
+  .paso.activo { background: var(--accent); }
 
   canvas { display: none; }
 </style>
@@ -311,7 +327,7 @@
         <select id="reg-pauta" style="flex:1;">
           <option value="">Cargando pautas...</option>
         </select>
-        <button onclick="cargarPautas()" type="button" style="padding:14px 12px;border:2px solid #e8e8e8;border-radius:12px;background:white;font-size:1rem;cursor:pointer;flex-shrink:0;" title="Recargar">🔄</button>
+        <button onclick="cargarPautas()" type="button" style="padding:14px 12px;border:2px solid var(--border);border-radius:12px;background:var(--bg-elev);color:var(--texto);font-size:1rem;cursor:pointer;flex-shrink:0;" title="Recargar">🔄</button>
       </div>
     </div>
     <button class="btn" onclick="irACaptura()">
