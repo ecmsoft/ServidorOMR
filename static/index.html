@@ -77,6 +77,7 @@
   <div class="tab active" onclick="showTab('pautas')">📋 Pautas</div>
   <div class="tab" onclick="showTab('nueva')">➕ Nueva Pauta</div>
   <div class="tab" onclick="showTab('corregir')">🔍 Corregir Hoja</div>
+  <div class="tab" onclick="showTab('resultados')">📊 Resultados</div>
   <div class="tab" onclick="showTab('debug')">🔬 Debug Imagen</div>
 </div>
 
@@ -202,6 +203,21 @@
   </div>
 </div>
 
+<!-- TAB: RESULTADOS -->
+<div class="panel" id="tab-resultados">
+  <div class="card">
+    <h2>Resultados de alumnos</h2>
+    <div class="row" style="margin-bottom:16px;">
+      <div>
+        <label>Filtrar por curso</label>
+        <input type="text" id="res-filtro-curso" placeholder="Ej: 2° Medio A" oninput="cargarResultados()">
+      </div>
+      <button class="secondary" onclick="document.getElementById('res-filtro-curso').value='';cargarResultados()">✕ Limpiar filtro</button>
+    </div>
+    <div id="lista-resultados"><p style="color:#aaa">Cargando...</p></div>
+  </div>
+</div>
+
 <!-- TAB: DEBUG IMAGEN -->
 <div class="panel" id="tab-debug">
   <div class="card">
@@ -223,11 +239,40 @@ const BASE = '';  // mismo origen
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 function showTab(nombre) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['pautas','nueva','corregir','debug'][i] === nombre));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['pautas','nueva','corregir','resultados','debug'][i] === nombre));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-'+nombre).classList.add('active');
   if (nombre === 'pautas') cargarListaPautas();
   if (nombre === 'corregir') cargarSelectPautas();
+  if (nombre === 'resultados') cargarResultados();
+}
+
+// ── Resultados ────────────────────────────────────────────────────────────────
+async function cargarResultados() {
+  const curso = document.getElementById('res-filtro-curso').value.trim();
+  const qs = curso ? ('?curso=' + encodeURIComponent(curso)) : '';
+  const r = await fetch(BASE + '/resultados' + qs);
+  const d = await r.json();
+  const el = document.getElementById('lista-resultados');
+  if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay resultados registrados.</p>'; return; }
+  el.innerHTML = `<table class="tabla">
+    <thead><tr>
+      <th>Alumno</th><th>RUT</th><th>Curso</th><th>Fecha entrega</th>
+      <th>Pauta</th><th>Nota</th><th>Correctas</th><th>Incorrectas</th><th>Omitidas</th><th></th>
+    </tr></thead>
+    <tbody>${d.resultados.map(r => `<tr>
+      <td><strong>${r.nombre_estudiante || '—'}</strong></td>
+      <td>${r.rut || '—'}</td>
+      <td>${r.curso || '—'}</td>
+      <td>${r.fecha_entrega || '—'}</td>
+      <td>${r.pauta_nombre || '—'}</td>
+      <td><span class="badge ${r.nota >= 4 ? 'verde' : 'rojo'}">${r.nota}</span></td>
+      <td>${r.correctas}</td>
+      <td>${r.incorrectas}</td>
+      <td>${r.omitidas}</td>
+      <td><a href="${BASE}/resultados/${r.id}/txt" target="_blank">⬇️ TXT</a></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
 }
 
 // ── Lista pautas ────────────────────────────────────────────────────────────

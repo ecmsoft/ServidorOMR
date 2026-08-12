@@ -1,13 +1,14 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional, List
-import json, os, uuid, shutil, tempfile, io
+import os, shutil, tempfile, io
 import cv2
 import numpy as np
 
+import db
 from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
@@ -19,18 +20,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Almacenamiento de pautas en JSON ─────────────────────────────────────────
-PAUTAS_FILE = os.path.join(os.path.dirname(__file__), "pautas.json")
 
-def cargar_pautas() -> dict:
-    if os.path.exists(PAUTAS_FILE):
-        with open(PAUTAS_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def guardar_pautas(pautas: dict):
-    with open(PAUTAS_FILE, "w") as f:
-        json.dump(pautas, f, ensure_ascii=False, indent=2)
+@app.on_event("startup")
+def _startup():
+    db.init_db()
 
 
 # ── Modelos ───────────────────────────────────────────────────────────────────
@@ -56,44 +49,49 @@ def estado():
 
 # Pautas CRUD
 @app.post("/pautas")
-def crear_pauta(pauta: Pauta):
-    pautas = cargar_pautas()
-    pid = str(uuid.uuid4())[:8]
-    pautas[pid] = {
-        "id": pid,
-        "nombre": pauta.nombre,
-        "asignatura": pauta.asignatura,
-        "respuestas": pauta.respuestas,
-        "total_preguntas": pauta.total_preguntas,
-    }
-    guardar_pautas(pautas)
+def crear_pauta_endpoint(pauta: Pauta):
+    pid = db.crear_pauta(pauta.nombre, pauta.asignatura or "", pauta.respuestas, pauta.total_preguntas)
     return {"ok": True, "id": pid, "nombre": pauta.nombre}
 
 
 @app.get("/pautas")
-def listar_pautas():
-    pautas = cargar_pautas()
-    lista = [{"id": v["id"], "nombre": v["nombre"], "asignatura": v.get("asignatura",""),
-              "total_preguntas": v.get("total_preguntas", 80)} for v in pautas.values()]
+def listar_pautas_endpoint():
+    lista = db.listar_pautas()
     return {"total": len(lista), "pautas": lista}
 
 
 @app.get("/pautas/{pauta_id}")
-def obtener_pauta(pauta_id: str):
-    pautas = cargar_pautas()
-    if pauta_id not in pautas:
+def obtener_pauta_endpoint(pauta_id: str):
+    pauta = db.obtener_pauta(pauta_id)
+    if pauta is None:
         raise HTTPException(status_code=404, detail="Pauta no encontrada")
-    return pautas[pauta_id]
+    return pauta
 
 
 @app.delete("/pautas/{pauta_id}")
-def eliminar_pauta(pauta_id: str):
-    pautas = cargar_pautas()
-    if pauta_id not in pautas:
+def eliminar_pauta_endpoint(pauta_id: str):
+    if not db.eliminar_pauta(pauta_id):
         raise HTTPException(status_code=404, detail="Pauta no encontrada")
-    del pautas[pauta_id]
-    guardar_pautas(pautas)
     return {"ok": True}
+
+
+# Resultados
+@app.get("/resultados")
+def listar_resultados_endpoint(pauta_id: str = "", curso: str = ""):
+    lista = db.listar_resultados(pauta_id or None, curso or None)
+    return {"total": len(lista), "resultados": lista}
+
+
+@app.get("/resultados/{resultado_id}/txt")
+def descargar_resultado_txt(resultado_id: int):
+    resultado = db.obtener_resultado(resultado_id)
+    if resultado is None:
+        raise HTTPException(status_code=404, detail="Resultado no encontrado")
+    nombre_archivo = f"{resultado['nombre_estudiante'] or 'alumno'}_{resultado['pauta_nombre'] or ''}.txt".replace(" ", "_")
+    return PlainTextResponse(
+        resultado["txt"] or "",
+        headers={"Content-Disposition": f'attachment; filename="{nombre_archivo}"'},
+    )
 
 
 # Procesamiento OMR
@@ -104,13 +102,12 @@ async def procesar(
     nombre_estudiante: str = "",
     curso: str = "",
     rut: str = "",
+    fecha_entrega: str = "",
 ):
     pauta_id = pauta_id.strip()
-    pautas = cargar_pautas()
-    if pauta_id not in pautas:
-        raise HTTPException(status_code=404, detail=f"Pauta '{pauta_id}' no encontrada. Disponibles: {list(pautas.keys())}")
-
-    pauta = pautas[pauta_id]
+    pauta = db.obtener_pauta(pauta_id)
+    if pauta is None:
+        raise HTTPException(status_code=404, detail=f"Pauta '{pauta_id}' no encontrada.")
 
     # Guardar imagen temporal
     suffix = os.path.splitext(imagen.filename)[1] or ".jpg"
@@ -125,13 +122,32 @@ async def procesar(
     finally:
         os.unlink(ruta_tmp)
 
-    txt = generar_txt(nombre_estudiante, curso, pauta["nombre"], respuestas, total)
+    txt = generar_txt(nombre_estudiante, curso, pauta["nombre"], respuestas, total,
+                       rut=rut, fecha_entrega=fecha_entrega)
+
+    resultado_id = db.guardar_resultado(
+        pauta_id=pauta_id,
+        nombre_estudiante=nombre_estudiante,
+        rut=rut,
+        curso=curso,
+        fecha_entrega=fecha_entrega,
+        respuestas={str(k): v for k, v in respuestas.items()},
+        detalle=resultado["detalle"],
+        correctas=resultado["correctas"],
+        incorrectas=resultado["incorrectas"],
+        omitidas=resultado["omitidas"],
+        nota=resultado["nota"],
+        porcentaje=resultado["porcentaje"],
+        txt=txt,
+    )
 
     return {
         "ok": True,
+        "id": resultado_id,
         "estudiante": nombre_estudiante,
         "curso": curso,
         "rut": rut,
+        "fecha_entrega": fecha_entrega,
         "pauta": pauta["nombre"],
         "txt": txt,
         **resultado,

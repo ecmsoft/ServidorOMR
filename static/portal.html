@@ -304,6 +304,8 @@
       <input type="text" id="reg-nombre" placeholder="Juan Pérez González" autocomplete="name">
       <label>Curso</label>
       <input type="text" id="reg-curso" placeholder="2° Medio A">
+      <label>Fecha de entrega</label>
+      <input type="date" id="reg-fecha">
       <label>Ensayo a corregir</label>
       <div style="display:flex;gap:8px;align-items:center;">
         <select id="reg-pauta" style="flex:1;">
@@ -432,7 +434,7 @@
 
 <script>
 // ── Estado global ──────────────────────────────────────────────────────────
-const estado = { nombre: '', curso: '', pautaId: '', fotoBlob: null };
+const estado = { nombre: '', curso: '', fechaEntrega: '', pautaId: '', fotoBlob: null };
 let stream = null;
 
 // ── Navegación ────────────────────────────────────────────────────────────
@@ -475,16 +477,19 @@ function irARegistro() {
 function irACaptura() {
   const nombre = document.getElementById('reg-nombre').value.trim();
   const curso  = document.getElementById('reg-curso').value.trim();
+  const fecha  = document.getElementById('reg-fecha').value;
   const pauta  = document.getElementById('reg-pauta').value;
   const msg    = document.getElementById('msg-registro');
 
   if (!nombre) { msg.innerHTML = '<div class="msg err">Ingresa tu nombre completo.</div>'; return; }
   if (!curso)  { msg.innerHTML = '<div class="msg err">Ingresa tu curso.</div>'; return; }
+  if (!fecha)  { msg.innerHTML = '<div class="msg err">Selecciona la fecha de entrega.</div>'; return; }
   if (!pauta)  { msg.innerHTML = '<div class="msg err">Selecciona el ensayo a corregir.</div>'; return; }
 
-  estado.nombre  = nombre;
-  estado.curso   = curso;
-  estado.pautaId = pauta;
+  estado.nombre       = nombre;
+  estado.curso        = curso;
+  estado.fechaEntrega = fecha;
+  estado.pautaId      = pauta;
   msg.innerHTML  = '';
 
   mostrar('screen-captura');
@@ -568,6 +573,8 @@ async function enviarFoto() {
   fd.append('imagen', estado.fotoBlob, 'hoja.jpg');
   fd.append('pauta_id', estado.pautaId);
   fd.append('nombre_estudiante', estado.nombre);
+  fd.append('curso', estado.curso);
+  fd.append('fecha_entrega', estado.fechaEntrega);
   fd.append('rut', '');
 
   try {
