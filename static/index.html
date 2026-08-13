@@ -8,16 +8,17 @@
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
   :root {
-    --bg: #0b0d12;
-    --bg-elev: #14171d;
-    --card: #1b1f27;
-    --border: rgba(255,255,255,0.08);
+    --bg: #000000;
+    --bg-elev: #0a0a0b;
+    --card: #1a1a1e;
+    --card-hover: #202024;
+    --border: rgba(255,255,255,0.09);
     --accent: #ff9300;
     --accent-dark: #e08400;
     --accent-soft: rgba(255,147,0,0.14);
-    --text: #f5f6f7;
-    --text-dim: #9aa1ab;
-    --text-faint: #6b7280;
+    --text: #ffffff;
+    --text-dim: #9a9aa2;
+    --text-faint: #68686f;
     --verde: #22c55e;
     --verde-bg: rgba(34,197,94,0.14);
     --rojo: #f87171;
@@ -28,7 +29,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
   header { background: var(--bg-elev); border-bottom: 1px solid var(--border); color: var(--text); padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-  header h1 { font-family: 'Poppins', sans-serif; font-size: 1.4rem; font-weight: 700; }
+  header h1 { font-family: 'Poppins', sans-serif; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
   header h1::before { content: '●'; color: var(--accent); margin-right: 8px; font-size: 0.9rem; }
   header span { font-size: 0.9rem; color: var(--text-dim); }
   .tabs { display: flex; background: var(--bg-elev); border-bottom: 1px solid var(--border); padding: 0 24px; overflow-x: auto; }
@@ -41,14 +42,15 @@
   .nueva-layout { display: flex; flex-direction: column; gap: 16px; }
   .nueva-col-izq { flex: 0 0 auto; }
   .nueva-col-der { flex: 1 1 auto; min-width: 0; }
-  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
-  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--text); }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; padding-left: 11px; border-left: 3px solid var(--accent); color: var(--text); }
   input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 1rem; color: var(--text); outline: none; transition: border 0.2s; }
   input:focus, select:focus { border-color: var(--accent); }
   label { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 4px; margin-top: 12px; }
-  button { padding: 10px 20px; background: var(--accent); color: #14100a; border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: background 0.2s; }
-  button:hover { background: var(--accent-dark); }
+  button { padding: 10px 20px; background: var(--accent); color: #14100a; border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: background 0.2s, transform 0.15s, box-shadow 0.2s; }
+  button:hover { background: var(--accent-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(255,147,0,0.25); }
   button.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
+  button.secondary:hover { background: var(--accent-soft); box-shadow: none; }
   button.danger { background: var(--rojo); color: #1a0a0a; }
   button.danger:hover { background: #ef4444; }
   .grid-opciones { display: grid; grid-template-columns: 32px repeat(5, 34px); gap: 6px 8px; margin-bottom: 6px; }
@@ -155,7 +157,7 @@
 <div class="panel active" id="tab-pautas">
   <div class="card">
     <h2>Pautas registradas</h2>
-    <div id="lista-pautas"><p style="color:#aaa">Cargando...</p></div>
+    <div id="lista-pautas"><p style="color:var(--text-dim)">Cargando...</p></div>
   </div>
 </div>
 
@@ -201,7 +203,7 @@
         <h2>Respuestas correctas</h2>
         <div class="grid-2col">
           <div>
-            <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 1 – 40</p>
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:12px;">Preguntas 1 – 40</p>
             <div class="grid-opciones" id="col-izq">
               <div class="grid-header"></div>
               <div class="grid-header">A</div>
@@ -212,7 +214,7 @@
             </div>
           </div>
           <div>
-            <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 41 – 80</p>
+            <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:12px;">Preguntas 41 – 80</p>
             <div class="grid-opciones" id="col-der">
               <div class="grid-header"></div>
               <div class="grid-header">A</div>
@@ -255,7 +257,7 @@
     <h2>Imagen de la hoja</h2>
     <label class="upload-area" for="cr-imagen">
       <input type="file" id="cr-imagen" accept="image/*" onchange="previewImagen(this)">
-      <div id="upload-text">📷 Toca aquí para subir la foto<br><span style="font-size:0.8rem;color:#aaa">JPG o PNG</span></div>
+      <div id="upload-text">📷 Toca aquí para subir la foto<br><span style="font-size:0.8rem;color:var(--text-dim)">JPG o PNG</span></div>
       <img id="preview-img" style="max-width:100%;max-height:300px;display:none;border-radius:8px;margin-top:12px;">
     </label>
     <div style="margin-top:16px;">
@@ -290,7 +292,7 @@
       </div>
       <button class="secondary" onclick="document.getElementById('res-filtro-curso').value='';cargarResultados()">✕ Limpiar filtro</button>
     </div>
-    <div id="lista-resultados"><p style="color:#aaa">Cargando...</p></div>
+    <div id="lista-resultados"><p style="color:var(--text-dim)">Cargando...</p></div>
   </div>
 </div>
 
@@ -305,7 +307,7 @@
     </p>
     <label>Foto de la hoja</label>
     <input type="file" id="debug-file" accept="image/*" onchange="enviarDebug()">
-    <div id="debug-loading" style="display:none;margin-top:16px;color:#888;">⏳ Procesando...</div>
+    <div id="debug-loading" style="display:none;margin-top:16px;color:var(--text-dim);">⏳ Procesando...</div>
     <div id="debug-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
@@ -330,7 +332,7 @@ async function cargarResultados() {
   const r = await fetch(BASE + '/resultados' + qs);
   const d = await r.json();
   const el = document.getElementById('lista-resultados');
-  if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay resultados registrados.</p>'; return; }
+  if (d.total === 0) { el.innerHTML = '<p style="color:var(--text-dim)">No hay resultados registrados.</p>'; return; }
   el.innerHTML = `<p class="scroll-hint">← Desliza para ver todas las columnas →</p>
   <div class="tabla-wrap"><table class="tabla tabla-ancha">
     <thead><tr>
@@ -357,14 +359,14 @@ async function cargarListaPautas() {
   const r = await fetch(BASE+'/pautas');
   const d = await r.json();
   const el = document.getElementById('lista-pautas');
-  if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay pautas registradas.</p>'; return; }
+  if (d.total === 0) { el.innerHTML = '<p style="color:var(--text-dim)">No hay pautas registradas.</p>'; return; }
   el.innerHTML = `<div class="tabla-wrap"><table class="tabla">
     <thead><tr><th>Nombre</th><th>Asignatura</th><th>Preguntas</th><th class="col-id">ID</th><th></th></tr></thead>
     <tbody>${d.pautas.map(p => `<tr>
       <td><strong>${p.nombre}</strong></td>
       <td>${p.asignatura||'—'}</td>
       <td><span class="badge azul">${p.total_preguntas}</span></td>
-      <td class="col-id" style="font-family:monospace;font-size:0.8rem;color:#999">${p.id}</td>
+      <td class="col-id" style="font-family:monospace;font-size:0.8rem;color:var(--text-faint)">${p.id}</td>
       <td><button class="danger" onclick="eliminarPauta('${p.id}')">Eliminar</button></td>
     </tr>`).join('')}</tbody>
   </table></div>`;

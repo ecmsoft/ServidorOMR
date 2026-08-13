@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#000000">
 <title>Calco — Corrección de Ensayo</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap');
@@ -13,16 +13,16 @@
   * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
   :root {
-    --bg: #0b0d12;
-    --bg-elev: #161a21;
-    --card: #1b1f27;
-    --border: rgba(255,255,255,0.08);
+    --bg: #000000;
+    --bg-elev: #0a0a0b;
+    --card: #1a1a1e;
+    --border: rgba(255,255,255,0.09);
     --accent: #ff9300;
     --accent-dark: #e08400;
     --accent-soft: rgba(255,147,0,0.14);
-    --texto: #f5f6f7;
-    --texto-dim: #9aa1ab;
-    --texto-faint: #6b7280;
+    --texto: #ffffff;
+    --texto-dim: #9a9aa2;
+    --texto-faint: #68686f;
     --verde: #22c55e;
     --verde-bg: rgba(34,197,94,0.14);
     --rojo: #f87171;
@@ -60,7 +60,7 @@
     padding: 20px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.35);
   }
-  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--texto); }
+  .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 16px; padding-left: 11px; border-left: 3px solid var(--accent); color: var(--texto); }
 
   /* ── Inputs ── */
   label { font-size: 0.82rem; font-weight: 700; color: var(--texto-dim); display: block; margin-bottom: 5px; margin-top: 14px; text-transform: uppercase; letter-spacing: 0.4px; }
@@ -98,12 +98,13 @@
     font-size: 1.05rem;
     font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s, transform 0.1s;
+    transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
     letter-spacing: 0.2px;
   }
   .btn:active { transform: scale(0.98); }
-  .btn:hover  { background: var(--accent-dark); }
+  .btn:hover  { background: var(--accent-dark); box-shadow: 0 4px 18px rgba(255,147,0,0.25); }
   .btn.secondary { background: transparent; color: var(--accent); border: 2px solid var(--accent); }
+  .btn.secondary:hover { background: var(--accent-soft); box-shadow: none; }
   .btn.verde  { background: var(--verde); color: #0b1f13; }
   .btn:disabled { background: #3a3f47; color: #8a8f97; cursor: not-allowed; }
 
