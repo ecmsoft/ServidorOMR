@@ -39,7 +39,7 @@
   .panel.active { display: block; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--text); }
-  input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.95rem; color: var(--text); outline: none; transition: border 0.2s; }
+  input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 1rem; color: var(--text); outline: none; transition: border 0.2s; }
   input:focus, select:focus { border-color: var(--accent); }
   label { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); display: block; margin-bottom: 4px; margin-top: 12px; }
   button { padding: 10px 20px; background: var(--accent); color: #14100a; border: none; border-radius: 10px; cursor: pointer; font-size: 0.95rem; font-weight: 700; transition: background 0.2s; }
@@ -83,6 +83,32 @@
   .row > * { flex: 1; }
   .row > button { flex: 0 0 auto; }
   #resultado { display: none; }
+  .tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tabla-wrap .tabla { min-width: 640px; }
+
+  /* ── Móvil ────────────────────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    html { -webkit-text-size-adjust: 100%; }
+    header { padding: 12px 16px; gap: 8px; }
+    header h1 { font-size: 1.1rem; }
+    header span { font-size: 0.78rem; }
+    .tabs { padding: 0 8px; }
+    .tab { padding: 12px 12px; font-size: 0.82rem; }
+    .panel { padding: 14px; }
+    .card { padding: 14px; }
+    .card h2 { font-size: 0.92rem; }
+    .grid-2col { grid-template-columns: 1fr; gap: 20px; }
+    .row { flex-direction: column; align-items: stretch; }
+    .row > button { flex: 1; }
+    .grid-opciones { grid-template-columns: 30px repeat(5, 1fr); gap: 3px; }
+    .burbuja { font-size: 0.68rem; }
+    .num-pregunta { font-size: 0.72rem; padding-right: 4px; }
+    .detalle-grid { grid-template-columns: repeat(5, 1fr); }
+    .nota-grande { font-size: 2.3rem; }
+    .stats { gap: 8px; }
+    .stat .num { font-size: 1.3rem; }
+    textarea#excel-paste { font-size: 1rem !important; }
+  }
 </style>
 </head>
 <body>
@@ -276,7 +302,7 @@ async function cargarResultados() {
   const d = await r.json();
   const el = document.getElementById('lista-resultados');
   if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay resultados registrados.</p>'; return; }
-  el.innerHTML = `<table class="tabla">
+  el.innerHTML = `<div class="tabla-wrap"><table class="tabla">
     <thead><tr>
       <th>Alumno</th><th>RUT</th><th>Curso</th><th>Fecha entrega</th>
       <th>Pauta</th><th>Nota</th><th>Correctas</th><th>Incorrectas</th><th>Omitidas</th><th></th>
@@ -293,7 +319,7 @@ async function cargarResultados() {
       <td>${r.omitidas}</td>
       <td><a href="${BASE}/resultados/${r.id}/txt" target="_blank">⬇️ TXT</a></td>
     </tr>`).join('')}</tbody>
-  </table>`;
+  </table></div>`;
 }
 
 // ── Lista pautas ────────────────────────────────────────────────────────────
@@ -302,7 +328,7 @@ async function cargarListaPautas() {
   const d = await r.json();
   const el = document.getElementById('lista-pautas');
   if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay pautas registradas.</p>'; return; }
-  el.innerHTML = `<table class="tabla">
+  el.innerHTML = `<div class="tabla-wrap"><table class="tabla">
     <thead><tr><th>Nombre</th><th>Asignatura</th><th>Preguntas</th><th>ID</th><th></th></tr></thead>
     <tbody>${d.pautas.map(p => `<tr>
       <td><strong>${p.nombre}</strong></td>
@@ -311,7 +337,7 @@ async function cargarListaPautas() {
       <td style="font-family:monospace;font-size:0.8rem;color:#999">${p.id}</td>
       <td><button class="danger" onclick="eliminarPauta('${p.id}')">Eliminar</button></td>
     </tr>`).join('')}</tbody>
-  </table>`;
+  </table></div>`;
 }
 
 async function eliminarPauta(id) {

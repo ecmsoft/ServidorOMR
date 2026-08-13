@@ -2,8 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0b0d12">
 <title>Calco — Corrección de Ensayo</title>
 <style>
@@ -29,7 +30,7 @@
     --radio: 16px;
   }
 
-  html, body { height: 100%; background: var(--bg); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--texto); }
+  html, body { height: 100%; background: var(--bg); font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--texto); -webkit-text-size-adjust: 100%; }
 
   /* ── Pantallas ── */
   .screen { display: none; flex-direction: column; min-height: 100vh; }
@@ -40,7 +41,7 @@
     background: var(--bg-elev);
     border-bottom: 1px solid var(--border);
     color: var(--texto);
-    padding: 20px 20px 16px;
+    padding: calc(20px + env(safe-area-inset-top)) 20px 16px;
     position: sticky;
     top: 0;
     z-index: 10;
@@ -49,7 +50,7 @@
   .header p  { font-size: 0.85rem; color: var(--texto-dim); margin-top: 2px; }
 
   /* ── Contenido ── */
-  .content { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+  .content { flex: 1; padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 16px; }
 
   /* ── Cards ── */
   .card {
@@ -333,7 +334,6 @@
     <button class="btn" onclick="irACaptura()">
       Continuar → Sacar foto
     </button>
-    <div id="debug-pautas" style="font-size:0.75rem;color:#888;word-break:break-all;margin-top:4px;"></div>
     <div id="msg-registro"></div>
   </div>
 </div>
@@ -463,25 +463,19 @@ function mostrar(id) {
 // ── Pantalla 1: Registro ──────────────────────────────────────────────────
 async function cargarPautas() {
   const sel = document.getElementById('reg-pauta');
-  const dbg = document.getElementById('debug-pautas');
   sel.innerHTML = '<option value="">⏳ Cargando...</option>';
-  dbg.textContent = '';
   try {
     const r = await fetch('/pautas');
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    const texto = await r.text();
-    dbg.textContent = 'Respuesta: ' + texto;
-    const d = JSON.parse(texto);
+    const d = await r.json();
     if (!d.pautas || d.pautas.length === 0) {
       sel.innerHTML = '<option value="">Sin pautas disponibles</option>';
       return;
     }
     sel.innerHTML = '<option value="">— Selecciona el ensayo —</option>' +
       d.pautas.map(p => `<option value="${p.id}">${p.nombre}</option>`).join('');
-    dbg.textContent = '';
   } catch(e) {
     sel.innerHTML = '<option value="">❌ ' + e.message + '</option>';
-    dbg.textContent = 'Error: ' + e.message;
   }
 }
 
