@@ -84,30 +84,42 @@
   .row > button { flex: 0 0 auto; }
   #resultado { display: none; }
   .tabla-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .tabla-wrap .tabla { min-width: 640px; }
+  .tabla-wrap .tabla-ancha { min-width: 640px; }
+  .scroll-hint { display: none; }
+
+  html, body { overflow-x: hidden; max-width: 100%; }
 
   /* ── Móvil ────────────────────────────────────────────────────────────── */
   @media (max-width: 640px) {
     html { -webkit-text-size-adjust: 100%; }
     header { padding: 12px 16px; gap: 8px; }
-    header h1 { font-size: 1.1rem; }
-    header span { font-size: 0.78rem; }
-    .tabs { padding: 0 8px; }
-    .tab { padding: 12px 12px; font-size: 0.82rem; }
+    header h1 { font-size: 1.05rem; }
+    header span { font-size: 0.76rem; }
+
+    /* Tabs: en vez de scroll horizontal oculto, se envuelven en chips */
+    .tabs { flex-wrap: wrap; overflow-x: visible; justify-content: flex-start; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .tab { flex: 0 0 auto; padding: 8px 14px; font-size: 0.78rem; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 0; }
+    .tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
     .panel { padding: 14px; }
     .card { padding: 14px; }
     .card h2 { font-size: 0.92rem; }
     .grid-2col { grid-template-columns: 1fr; gap: 20px; }
     .row { flex-direction: column; align-items: stretch; }
-    .row > button { flex: 1; }
-    .grid-opciones { grid-template-columns: 30px repeat(5, 1fr); gap: 3px; }
+    .row > button { flex: 1; min-height: 44px; }
+    .grid-opciones { grid-template-columns: 28px repeat(5, 1fr); gap: 3px; }
     .burbuja { font-size: 0.68rem; }
-    .num-pregunta { font-size: 0.72rem; padding-right: 4px; }
+    .num-pregunta { font-size: 0.7rem; padding-right: 3px; }
     .detalle-grid { grid-template-columns: repeat(5, 1fr); }
     .nota-grande { font-size: 2.3rem; }
     .stats { gap: 8px; }
     .stat .num { font-size: 1.3rem; }
     textarea#excel-paste { font-size: 1rem !important; }
+
+    button { min-height: 44px; }
+    .tabla th, .tabla td { padding: 8px 10px; font-size: 0.8rem; }
+    .tabla .col-id { display: none; }
+    .scroll-hint { display: block; font-size: 0.72rem; color: var(--text-faint); margin-bottom: 6px; }
   }
 </style>
 </head>
@@ -302,7 +314,8 @@ async function cargarResultados() {
   const d = await r.json();
   const el = document.getElementById('lista-resultados');
   if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay resultados registrados.</p>'; return; }
-  el.innerHTML = `<div class="tabla-wrap"><table class="tabla">
+  el.innerHTML = `<p class="scroll-hint">← Desliza para ver todas las columnas →</p>
+  <div class="tabla-wrap"><table class="tabla tabla-ancha">
     <thead><tr>
       <th>Alumno</th><th>RUT</th><th>Curso</th><th>Fecha entrega</th>
       <th>Pauta</th><th>Nota</th><th>Correctas</th><th>Incorrectas</th><th>Omitidas</th><th></th>
@@ -329,12 +342,12 @@ async function cargarListaPautas() {
   const el = document.getElementById('lista-pautas');
   if (d.total === 0) { el.innerHTML = '<p style="color:#aaa">No hay pautas registradas.</p>'; return; }
   el.innerHTML = `<div class="tabla-wrap"><table class="tabla">
-    <thead><tr><th>Nombre</th><th>Asignatura</th><th>Preguntas</th><th>ID</th><th></th></tr></thead>
+    <thead><tr><th>Nombre</th><th>Asignatura</th><th>Preguntas</th><th class="col-id">ID</th><th></th></tr></thead>
     <tbody>${d.pautas.map(p => `<tr>
       <td><strong>${p.nombre}</strong></td>
       <td>${p.asignatura||'—'}</td>
       <td><span class="badge azul">${p.total_preguntas}</span></td>
-      <td style="font-family:monospace;font-size:0.8rem;color:#999">${p.id}</td>
+      <td class="col-id" style="font-family:monospace;font-size:0.8rem;color:#999">${p.id}</td>
       <td><button class="danger" onclick="eliminarPauta('${p.id}')">Eliminar</button></td>
     </tr>`).join('')}</tbody>
   </table></div>`;
