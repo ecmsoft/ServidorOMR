@@ -37,6 +37,10 @@
   .tab:hover { color: var(--accent); }
   .panel { display: none; padding: 24px; max-width: 960px; margin: 0 auto; }
   .panel.active { display: block; }
+  #tab-nueva.panel { max-width: 1180px; }
+  .nueva-layout { display: flex; flex-direction: column; gap: 16px; }
+  .nueva-col-izq { flex: 0 0 auto; }
+  .nueva-col-der { flex: 1 1 auto; min-width: 0; }
   .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.35); }
   .card h2 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 16px; color: var(--text); }
   input, select { width: 100%; padding: 10px 12px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; font-size: 1rem; color: var(--text); outline: none; transition: border 0.2s; }
@@ -47,11 +51,11 @@
   button.secondary { background: transparent; color: var(--accent); border: 1.5px solid var(--accent); }
   button.danger { background: var(--rojo); color: #1a0a0a; }
   button.danger:hover { background: #ef4444; }
-  .grid-opciones { display: grid; grid-template-columns: 40px repeat(5, 1fr); gap: 4px; margin-bottom: 8px; }
+  .grid-opciones { display: grid; grid-template-columns: 32px repeat(5, 34px); gap: 6px 8px; margin-bottom: 6px; }
   .grid-header { font-weight: 700; text-align: center; padding: 6px; font-size: 0.85rem; color: var(--text-dim); }
   .fila-pregunta { display: contents; }
   .num-pregunta { display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-size: 0.8rem; color: var(--text-faint); font-weight: 600; }
-  .burbuja { width: 100%; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--text-faint); transition: all 0.15s; background: var(--bg); }
+  .burbuja { width: 34px; height: 34px; justify-self: center; aspect-ratio: 1; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--text-faint); transition: all 0.15s; background: var(--bg); }
   .burbuja.marcada { background: var(--accent); border-color: var(--accent); color: #14100a; }
   .grid-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
   .tabla { width: 100%; border-collapse: collapse; }
@@ -89,6 +93,12 @@
 
   html, body { overflow-x: hidden; max-width: 100%; }
 
+  /* ── Escritorio: Nueva Pauta en dos columnas ─────────────────────────── */
+  @media (min-width: 860px) {
+    .nueva-layout { flex-direction: row; align-items: flex-start; }
+    .nueva-col-izq { flex: 0 0 380px; }
+  }
+
   /* ── Móvil ────────────────────────────────────────────────────────────── */
   @media (max-width: 640px) {
     html { -webkit-text-size-adjust: 100%; }
@@ -97,7 +107,7 @@
     header span { font-size: 0.76rem; }
 
     /* Tabs: en vez de scroll horizontal oculto, se envuelven en chips */
-    .tabs { flex-wrap: wrap; overflow-x: visible; justify-content: flex-start; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .tabs { flex-wrap: wrap; overflow-x: visible; justify-content: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .tab { flex: 0 0 auto; padding: 8px 14px; font-size: 0.78rem; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 0; }
     .tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
 
@@ -108,7 +118,8 @@
     .row { flex-direction: column; align-items: stretch; }
     .row > button { flex: 1; min-height: 44px; }
     .grid-opciones { grid-template-columns: 28px repeat(5, 1fr); gap: 3px; }
-    .burbuja { font-size: 0.68rem; }
+    .burbuja { width: 100%; height: auto; font-size: 0.68rem; }
+    .nueva-col-izq, .nueva-col-der { flex: 1 1 100%; }
     .num-pregunta { font-size: 0.7rem; padding-right: 3px; }
     .detalle-grid { grid-template-columns: repeat(5, 1fr); }
     .nota-grande { font-size: 2.3rem; }
@@ -150,69 +161,75 @@
 
 <!-- TAB: NUEVA PAUTA -->
 <div class="panel" id="tab-nueva">
-  <div class="card">
-    <h2>Datos del ensayo</h2>
-    <label>Nombre del ensayo</label>
-    <input type="text" id="np-nombre" placeholder="Ej: Ensayo LG-1 Mayo 2026">
-    <label>Asignatura</label>
-    <input type="text" id="np-asignatura" placeholder="Ej: Lenguaje y Comunicación">
-    <label>Total de preguntas</label>
-    <select id="np-total">
-      <option value="80">80 preguntas</option>
-      <option value="65">65 preguntas</option>
-      <option value="60">60 preguntas</option>
-    </select>
-  </div>
-
-  <div class="card">
-    <h2>📋 Pegar desde Excel</h2>
-    <p style="font-size:0.85rem;color:#9aa1ab;margin-bottom:12px;">
-      En Excel, selecciona la columna con las respuestas correctas (A, B, C, D o E) y pega aquí.<br>
-      Acepta una respuesta por fila, o separadas por coma/espacio.
-    </p>
-    <textarea id="excel-paste"
-      placeholder="A&#10;B&#10;C&#10;D&#10;E&#10;A&#10;..."
-      style="width:100%;height:120px;padding:10px 12px;border:1.5px solid rgba(255,255,255,0.08);border-radius:8px;
-             background:#0b0d12;color:#f5f6f7;font-family:monospace;font-size:0.9rem;resize:vertical;outline:none;"
-      oninput="previewPaste(this.value)"></textarea>
-    <div id="paste-preview" style="font-size:0.8rem;color:#9aa1ab;margin-top:6px;min-height:18px;"></div>
-    <div style="margin-top:10px;display:flex;gap:8px;">
-      <button onclick="cargarDesdeTexto()">⬆️ Cargar en grilla</button>
-      <button class="secondary" onclick="document.getElementById('excel-paste').value='';document.getElementById('paste-preview').textContent='';">✕ Borrar</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <h2>Respuestas correctas</h2>
-    <div class="grid-2col">
-      <div>
-        <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 1 – 40</p>
-        <div class="grid-opciones" id="col-izq">
-          <div class="grid-header"></div>
-          <div class="grid-header">A</div>
-          <div class="grid-header">B</div>
-          <div class="grid-header">C</div>
-          <div class="grid-header">D</div>
-          <div class="grid-header">E</div>
-        </div>
+  <div class="nueva-layout">
+    <div class="nueva-col-izq">
+      <div class="card">
+        <h2>Datos del ensayo</h2>
+        <label>Nombre del ensayo</label>
+        <input type="text" id="np-nombre" placeholder="Ej: Ensayo LG-1 Mayo 2026">
+        <label>Asignatura</label>
+        <input type="text" id="np-asignatura" placeholder="Ej: Lenguaje y Comunicación">
+        <label>Total de preguntas</label>
+        <select id="np-total">
+          <option value="80">80 preguntas</option>
+          <option value="65">65 preguntas</option>
+          <option value="60">60 preguntas</option>
+        </select>
       </div>
-      <div>
-        <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 41 – 80</p>
-        <div class="grid-opciones" id="col-der">
-          <div class="grid-header"></div>
-          <div class="grid-header">A</div>
-          <div class="grid-header">B</div>
-          <div class="grid-header">C</div>
-          <div class="grid-header">D</div>
-          <div class="grid-header">E</div>
+
+      <div class="card">
+        <h2>📋 Pegar desde Excel</h2>
+        <p style="font-size:0.85rem;color:#9aa1ab;margin-bottom:12px;">
+          En Excel, selecciona la columna con las respuestas correctas (A, B, C, D o E) y pega aquí.<br>
+          Acepta una respuesta por fila, o separadas por coma/espacio.
+        </p>
+        <textarea id="excel-paste"
+          placeholder="A&#10;B&#10;C&#10;D&#10;E&#10;A&#10;..."
+          style="width:100%;height:120px;padding:10px 12px;border:1.5px solid rgba(255,255,255,0.08);border-radius:8px;
+                 background:#0b0d12;color:#f5f6f7;font-family:monospace;font-size:0.9rem;resize:vertical;outline:none;"
+          oninput="previewPaste(this.value)"></textarea>
+        <div id="paste-preview" style="font-size:0.8rem;color:#9aa1ab;margin-top:6px;min-height:18px;"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button onclick="cargarDesdeTexto()">⬆️ Cargar en grilla</button>
+          <button class="secondary" onclick="document.getElementById('excel-paste').value='';document.getElementById('paste-preview').textContent='';">✕ Borrar</button>
         </div>
       </div>
     </div>
-    <div style="margin-top:16px;display:flex;gap:8px;">
-      <button onclick="guardarPauta()">💾 Guardar pauta</button>
-      <button class="secondary" onclick="limpiarPauta()">🗑 Limpiar</button>
+
+    <div class="nueva-col-der">
+      <div class="card">
+        <h2>Respuestas correctas</h2>
+        <div class="grid-2col">
+          <div>
+            <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 1 – 40</p>
+            <div class="grid-opciones" id="col-izq">
+              <div class="grid-header"></div>
+              <div class="grid-header">A</div>
+              <div class="grid-header">B</div>
+              <div class="grid-header">C</div>
+              <div class="grid-header">D</div>
+              <div class="grid-header">E</div>
+            </div>
+          </div>
+          <div>
+            <p style="font-size:0.85rem;color:#888;margin-bottom:12px;">Preguntas 41 – 80</p>
+            <div class="grid-opciones" id="col-der">
+              <div class="grid-header"></div>
+              <div class="grid-header">A</div>
+              <div class="grid-header">B</div>
+              <div class="grid-header">C</div>
+              <div class="grid-header">D</div>
+              <div class="grid-header">E</div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;gap:8px;">
+          <button onclick="guardarPauta()">💾 Guardar pauta</button>
+          <button class="secondary" onclick="limpiarPauta()">🗑 Limpiar</button>
+        </div>
+        <div id="msg-pauta"></div>
+      </div>
     </div>
-    <div id="msg-pauta"></div>
   </div>
 </div>
 
