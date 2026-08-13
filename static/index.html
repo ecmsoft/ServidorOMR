@@ -305,8 +305,10 @@
       <span style="color:#22c55e;font-weight:700;">● Verde = marcada</span> &nbsp;
       <span style="color:#f87171;font-weight:700;">● Rojo = posición esperada (vacía)</span>
     </p>
-    <label>Foto de la hoja</label>
-    <input type="file" id="debug-file" accept="image/*" onchange="enviarDebug()">
+    <label class="upload-area" for="debug-file">
+      <input type="file" id="debug-file" accept="image/*" onchange="nombrarArchivoDebug(this); enviarDebug()">
+      <div id="debug-upload-text">📷 Toca aquí para subir la foto<br><span style="font-size:0.8rem;color:var(--text-dim)">JPG o PNG</span></div>
+    </label>
     <div id="debug-loading" style="display:none;margin-top:16px;color:var(--text-dim);">⏳ Procesando...</div>
     <div id="debug-resultado" style="margin-top:16px;"></div>
   </div>
@@ -544,6 +546,13 @@ function mostrarResultado(d) {
 }
 
 // ── Debug imagen ──────────────────────────────────────────────────────────
+function nombrarArchivoDebug(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('debug-upload-text').innerHTML =
+    `✅ ${file.name}<br><span style="font-size:0.8rem;color:var(--text-dim)">Toca para cambiar</span>`;
+}
+
 async function enviarDebug() {
   const file = document.getElementById('debug-file').files[0];
   if (!file) return;
