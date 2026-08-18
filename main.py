@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse
@@ -98,11 +98,11 @@ def descargar_resultado_txt(resultado_id: int):
 @app.post("/procesar")
 async def procesar(
     imagen: UploadFile = File(...),
-    pauta_id: str = "",
-    nombre_estudiante: str = "",
-    curso: str = "",
-    rut: str = "",
-    fecha_entrega: str = "",
+    pauta_id: str = Form(""),
+    nombre_estudiante: str = Form(""),
+    curso: str = Form(""),
+    rut: str = Form(""),
+    fecha_entrega: str = Form(""),
 ):
     pauta_id = pauta_id.strip()
     pauta = db.obtener_pauta(pauta_id)
