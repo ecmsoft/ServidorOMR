@@ -206,7 +206,7 @@
 
   .stats-row {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr));
     gap: 10px;
     margin: 16px 0;
   }
@@ -222,6 +222,7 @@
   .stat-box.verde .num { color: var(--verde); }
   .stat-box.rojo  .num { color: var(--rojo); }
   .stat-box.gris  .num { color: var(--texto-dim); }
+  .stat-box.amarillo .num { color: #facc15; }
 
   .alumno-info {
     background: var(--bg-elev);
@@ -254,6 +255,17 @@
   .detalle-celda.correcta  { background: var(--verde-bg); color: var(--verde); }
   .detalle-celda.incorrecta{ background: var(--rojo-bg); color: var(--rojo); }
   .detalle-celda.omitida   { background: rgba(255,255,255,0.05); color: var(--texto-faint); }
+  .detalle-celda.ambigua   { background: rgba(250,204,21,0.14); color: #facc15; }
+
+  /* ── Confirmación de preguntas ambiguas ── */
+  .confirma-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .confirma-item:last-child { border-bottom: none; }
+  .confirma-pregunta { font-weight: 700; font-size: 0.92rem; margin-bottom: 10px; }
+  .confirma-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+  .confirma-btn { padding: 10px 16px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; color: var(--texto); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.15s; min-height: 44px; }
+  .confirma-btn.elegido { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .confirma-btn-multiple { color: var(--texto-dim); font-size: 0.78rem; }
+  .confirma-btn-multiple.elegido { background: rgba(250,204,21,0.14); border-color: #facc15; color: #facc15; }
 
   /* ── Loading ── */
   .loading {
@@ -396,6 +408,32 @@
 </div>
 
 <!-- ═══════════════════════════════════════════
+     PANTALLA 2.5: CONFIRMAR RESPUESTAS DUDOSAS
+══════════════════════════════════════════════ -->
+<div class="screen" id="screen-confirmacion">
+  <div class="header">
+    <h1>⚠️ Confirma tus respuestas</h1>
+    <p>Estas preguntas quedaron con una marca dudosa</p>
+    <div class="pasos" style="margin-top:12px;">
+      <div class="paso activo"></div>
+      <div class="paso activo"></div>
+      <div class="paso"></div>
+    </div>
+  </div>
+  <div class="content">
+    <div class="card">
+      <p style="font-size:0.85rem;color:var(--texto-dim);margin-bottom:14px;">
+        Indica cuál alternativa marcaste realmente en cada una, o deja "Múltiples / no sé" si no
+        se puede determinar.
+      </p>
+      <div id="confirmacion-lista"></div>
+    </div>
+    <input type="hidden" id="confirmacion-resultado-id">
+    <button class="btn" onclick="enviarConfirmacion()">✅ Confirmar y ver resultado</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════
      PANTALLA 3: RESULTADO
 ══════════════════════════════════════════════ -->
 <div class="screen" id="screen-resultado">
@@ -432,6 +470,10 @@
         <div class="stat-box gris">
           <div class="num" id="res-omitidas">—</div>
           <div class="lbl">Omitidas</div>
+        </div>
+        <div class="stat-box amarillo" id="res-ambiguas-box" style="display:none;">
+          <div class="num" id="res-ambiguas">—</div>
+          <div class="lbl">Ambiguas</div>
         </div>
       </div>
     </div>
@@ -622,12 +664,54 @@ async function enviarFoto() {
     const r = await fetch('/procesar', { method: 'POST', body: fd });
     const d = await r.json();
     if (!d.ok) throw new Error(d.detail || 'Error al procesar');
-    mostrarResultado(d);
+    document.getElementById('loading-envio').classList.remove('active');
+    if (d.requiere_confirmacion) mostrarConfirmacion(d); else mostrarResultado(d);
   } catch (e) {
     document.getElementById('loading-envio').classList.remove('active');
     document.getElementById('vista-preview').style.display = 'block';
     document.getElementById('msg-captura').innerHTML =
       `<div class="msg err">❌ ${e.message}</div>`;
+  }
+}
+
+// ── Pantalla 2.5: Confirmar preguntas ambiguas ─────────────────────────────
+let confirmacionElegidas = {};
+
+function mostrarConfirmacion(d) {
+  confirmacionElegidas = {};
+  document.getElementById('confirmacion-resultado-id').value = d.id;
+  const preguntas = Object.keys(d.ambiguas_detalle).map(Number).sort((a, b) => a - b);
+  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => `
+    <div class="confirma-item" data-q="${q}">
+      <div class="confirma-pregunta">Pregunta ${q}</div>
+      <div class="confirma-opciones">
+        ${d.ambiguas_detalle[q].map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
+        <button type="button" class="confirma-btn confirma-btn-multiple" onclick="elegirConfirmacion(${q}, null, this)">Múltiples / no sé</button>
+      </div>
+    </div>
+  `).join('');
+  mostrar('screen-confirmacion');
+}
+
+function elegirConfirmacion(q, valor, btn) {
+  confirmacionElegidas[q] = valor;
+  btn.closest('.confirma-item').querySelectorAll('.confirma-btn').forEach(b => b.classList.remove('elegido'));
+  btn.classList.add('elegido');
+}
+
+async function enviarConfirmacion() {
+  const id = document.getElementById('confirmacion-resultado-id').value;
+  try {
+    const r = await fetch('/resultados/' + id + '/confirmar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({respuestas: confirmacionElegidas}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.detail || 'Error al confirmar');
+    mostrarResultado(d);
+  } catch (e) {
+    alert('❌ ' + e.message);
   }
 }
 
@@ -649,6 +733,13 @@ function mostrarResultado(d) {
   document.getElementById('res-correctas').textContent   = d.correctas;
   document.getElementById('res-incorrectas').textContent = d.incorrectas;
   document.getElementById('res-omitidas').textContent    = d.omitidas;
+  const ambiguasBox = document.getElementById('res-ambiguas-box');
+  if (d.ambiguas > 0) {
+    document.getElementById('res-ambiguas').textContent = d.ambiguas;
+    ambiguasBox.style.display = '';
+  } else {
+    ambiguasBox.style.display = 'none';
+  }
 
   // Detalle
   const grid = document.getElementById('res-detalle');

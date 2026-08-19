@@ -65,12 +65,14 @@ def init_db():
                 porcentaje NUMERIC(5,1),
                 txt TEXT,
                 imagen_pdf BYTEA,
+                ambiguas JSONB,
+                pendiente_confirmacion BOOLEAN NOT NULL DEFAULT false,
                 creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
             );
         """)
-        cur.execute("""
-            ALTER TABLE resultados ADD COLUMN IF NOT EXISTS imagen_pdf BYTEA;
-        """)
+        cur.execute("ALTER TABLE resultados ADD COLUMN IF NOT EXISTS imagen_pdf BYTEA;")
+        cur.execute("ALTER TABLE resultados ADD COLUMN IF NOT EXISTS ambiguas JSONB;")
+        cur.execute("ALTER TABLE resultados ADD COLUMN IF NOT EXISTS pendiente_confirmacion BOOLEAN NOT NULL DEFAULT false;")
 
 
 # ── Pautas ────────────────────────────────────────────────────────────────────
@@ -118,15 +120,16 @@ def guardar_resultado(pauta_id: str, nombre_estudiante: str, rut: str, curso: st
                        fecha_entrega: str, respuestas: dict, detalle: dict,
                        correctas: int, incorrectas: int, omitidas: int,
                        nota: float, porcentaje: float, txt: str,
-                       imagen_pdf: bytes = None) -> int:
+                       imagen_pdf: bytes = None, ambiguas: dict = None) -> int:
+    pendiente = bool(ambiguas)
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO resultados (
                 pauta_id, nombre_estudiante, rut, curso, fecha_entrega,
                 respuestas, detalle, correctas, incorrectas, omitidas,
-                nota, porcentaje, txt, imagen_pdf
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                nota, porcentaje, txt, imagen_pdf, ambiguas, pendiente_confirmacion
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -134,9 +137,35 @@ def guardar_resultado(pauta_id: str, nombre_estudiante: str, rut: str, curso: st
                 Json(respuestas), Json(detalle), correctas, incorrectas, omitidas,
                 nota, porcentaje, txt,
                 psycopg2.Binary(imagen_pdf) if imagen_pdf is not None else None,
+                Json(ambiguas or {}), pendiente,
             ),
         )
         return cur.fetchone()[0]
+
+
+def confirmar_resultado(resultado_id: int, respuestas: dict, detalle: dict,
+                         correctas: int, incorrectas: int, omitidas: int,
+                         nota: float, porcentaje: float, txt: str,
+                         ambiguas: dict) -> bool:
+    """Recalcula y guarda un resultado tras la confirmación del usuario sobre
+    las preguntas ambiguas. pendiente_confirmacion queda en false siempre:
+    lo que siga en `ambiguas` a esta altura ya fue confirmado como
+    "marca múltiple / no estoy seguro" por el usuario, no queda pendiente."""
+    with _conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            UPDATE resultados SET
+                respuestas = %s, detalle = %s, correctas = %s, incorrectas = %s,
+                omitidas = %s, nota = %s, porcentaje = %s, txt = %s,
+                ambiguas = %s, pendiente_confirmacion = false
+            WHERE id = %s
+            """,
+            (
+                Json(respuestas), Json(detalle), correctas, incorrectas, omitidas,
+                nota, porcentaje, txt, Json(ambiguas or {}), resultado_id,
+            ),
+        )
+        return cur.rowcount > 0
 
 
 def listar_resultados(pauta_id: str = None, curso: str = None) -> list:
@@ -154,7 +183,8 @@ def listar_resultados(pauta_id: str = None, curso: str = None) -> list:
         cur.execute(f"""
             SELECT r.id, r.pauta_id, p.nombre AS pauta_nombre, r.nombre_estudiante,
                    r.rut, r.curso, r.fecha_entrega, r.correctas, r.incorrectas,
-                   r.omitidas, r.nota, r.porcentaje, r.creado_en
+                   r.omitidas, r.nota, r.porcentaje, r.creado_en,
+                   r.pendiente_confirmacion
             FROM resultados r
             LEFT JOIN pautas p ON p.id = r.pauta_id
             {where}

@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 import db
-from omr import procesar_hoja, procesar_hoja_imagen, generar_pdf_procesado, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
+from omr import procesar_hoja, procesar_hoja_imagen, generar_pdf_procesado, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, UMBRAL_PARCIAL, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -119,9 +119,9 @@ async def procesar(
         img = leer_imagen(ruta_tmp)
         if img is None:
             raise HTTPException(status_code=400, detail="No se pudo leer la imagen.")
-        respuestas, img_norm = procesar_hoja_imagen(img)
+        respuestas, ambiguas, img_norm = procesar_hoja_imagen(img)
         total      = pauta.get("total_preguntas", 80)
-        resultado  = calcular_nota(respuestas, pauta["respuestas"], total)
+        resultado  = calcular_nota(respuestas, pauta["respuestas"], total, ambiguas=ambiguas)
         imagen_pdf = generar_pdf_procesado(img_norm)
     finally:
         os.unlink(ruta_tmp)
@@ -144,6 +144,7 @@ async def procesar(
         porcentaje=resultado["porcentaje"],
         txt=txt,
         imagen_pdf=imagen_pdf,
+        ambiguas=ambiguas,
     )
 
     return {
@@ -155,6 +156,77 @@ async def procesar(
         "fecha_entrega": fecha_entrega,
         "pauta": pauta["nombre"],
         "txt": txt,
+        "ambiguas_detalle": ambiguas,
+        "requiere_confirmacion": bool(ambiguas),
+        **resultado,
+    }
+
+
+class ConfirmacionRespuestas(BaseModel):
+    # {"3": "B", "47": null (= "marca multiple / no estoy seguro")}
+    respuestas: dict
+
+
+@app.post("/resultados/{resultado_id}/confirmar")
+def confirmar_resultado(resultado_id: int, body: ConfirmacionRespuestas):
+    """
+    Aplica las respuestas confirmadas por el usuario sobre las preguntas que
+    quedaron ambiguas (marca parcial o doble marca) y recalcula la nota.
+    Una pregunta ambigua sin una opción confirmada (valor null) queda
+    registrada como "marca múltiple / no estoy seguro" y se mantiene en la
+    categoría 'ambigua' del detalle, sin puntuar.
+    """
+    resultado_db = db.obtener_resultado(resultado_id)
+    if resultado_db is None:
+        raise HTTPException(status_code=404, detail="Resultado no encontrado")
+
+    pauta = db.obtener_pauta(resultado_db["pauta_id"])
+    if pauta is None:
+        raise HTTPException(status_code=404, detail="Pauta del resultado no encontrada")
+
+    respuestas = {int(k): v for k, v in (resultado_db["respuestas"] or {}).items()}
+    ambiguas_originales = resultado_db["ambiguas"] or {}
+
+    ambiguas_restantes = {}
+    for q_str, opciones in ambiguas_originales.items():
+        q = int(q_str)
+        if q_str in body.respuestas:
+            elegida = body.respuestas[q_str]
+            if elegida:
+                respuestas[q] = elegida
+            else:
+                ambiguas_restantes[q] = opciones   # marca múltiple / no está seguro
+        else:
+            ambiguas_restantes[q] = opciones       # no vino en la confirmación, sigue pendiente
+
+    total = pauta.get("total_preguntas", 80)
+    resultado = calcular_nota(respuestas, pauta["respuestas"], total, ambiguas=ambiguas_restantes)
+    txt = generar_txt(resultado_db["nombre_estudiante"], resultado_db["curso"], pauta["nombre"],
+                       respuestas, total, rut=resultado_db["rut"],
+                       fecha_entrega=str(resultado_db["fecha_entrega"] or ""))
+
+    db.confirmar_resultado(
+        resultado_id=resultado_id,
+        respuestas={str(k): v for k, v in respuestas.items()},
+        detalle=resultado["detalle"],
+        correctas=resultado["correctas"],
+        incorrectas=resultado["incorrectas"],
+        omitidas=resultado["omitidas"],
+        nota=resultado["nota"],
+        porcentaje=resultado["porcentaje"],
+        txt=txt,
+        ambiguas=ambiguas_restantes,
+    )
+
+    return {
+        "ok": True,
+        "id": resultado_id,
+        "estudiante": resultado_db["nombre_estudiante"],
+        "curso": resultado_db["curso"],
+        "pauta": pauta["nombre"],
+        "txt": txt,
+        "ambiguas_detalle": ambiguas_restantes,
+        "requiere_confirmacion": bool(ambiguas_restantes),
         **resultado,
     }
 
@@ -207,7 +279,6 @@ async def debug_imagen(imagen: UploadFile = File(...)):
         visual = cv2.cvtColor(binaria, cv2.COLOR_GRAY2BGR)
 
         OPCIONES = ['A', 'B', 'C', 'D', 'E']
-        UMBRAL_PARCIAL = 0.15  # bajo este nivel, se considera claramente vacía
 
         # Dibujar posiciones de burbujas
         for col_idx, xs in enumerate(OPC_X):

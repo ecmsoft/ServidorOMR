@@ -70,7 +70,7 @@
   .badge.azul { background: var(--accent-soft); color: var(--accent); }
   .nota-grande { font-size: 3rem; font-weight: 800; color: var(--accent); text-align: center; margin: 16px 0 4px; font-family: 'Poppins', sans-serif; }
   .nota-label { text-align: center; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 16px; }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 12px; margin-bottom: 16px; }
   .stat { text-align: center; padding: 12px; background: var(--bg-elev); border-radius: 8px; }
   .stat .num { font-size: 1.6rem; font-weight: 800; }
   .stat .lbl { font-size: 0.78rem; color: var(--text-dim); }
@@ -79,12 +79,33 @@
   .detalle-celda.correcta { background: var(--verde-bg); color: var(--verde); }
   .detalle-celda.incorrecta { background: var(--rojo-bg); color: var(--rojo); }
   .detalle-celda.omitida { background: rgba(255,255,255,0.05); color: var(--text-faint); }
+  .detalle-celda.ambigua { background: rgba(250,204,21,0.14); color: #facc15; }
+
+  /* ── Confirmación de preguntas ambiguas ── */
+  .confirma-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .confirma-item:last-child { border-bottom: none; }
+  .confirma-pregunta { font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; }
+  .confirma-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+  .confirma-btn { padding: 8px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .confirma-btn:hover { border-color: var(--accent); }
+  .confirma-btn.elegido { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .confirma-btn-multiple { color: var(--text-dim); font-size: 0.78rem; }
+  .confirma-btn-multiple.elegido { background: rgba(250,204,21,0.14); border-color: #facc15; color: #facc15; }
   .msg { padding: 12px 16px; border-radius: 8px; margin: 8px 0; font-size: 0.9rem; }
   .msg.ok { background: var(--verde-bg); color: var(--verde); }
   .msg.err { background: var(--rojo-bg); color: var(--rojo); }
   .upload-area { border: 2px dashed var(--border); border-radius: 12px; padding: 32px; text-align: center; cursor: pointer; transition: all 0.2s; }
   .upload-area:hover { border-color: var(--accent); background: var(--accent-soft); }
   .upload-area input { display: none; }
+
+  /* ── Inicio ── */
+  .inicio-hero h2 { font-size: 1.3rem; margin-bottom: 10px; }
+  .inicio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+  .inicio-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .inicio-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.55); }
+  .inicio-card-icono { font-size: 1.6rem; margin-bottom: 10px; }
+  .inicio-card h3 { font-family: 'Poppins', sans-serif; font-size: 1rem; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .inicio-card p { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
 
   /* ── Cámara en modal (Corregir Hoja + Debug Imagen) ── */
   .camara-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
@@ -145,8 +166,10 @@
     textarea#excel-paste { font-size: 1rem !important; }
 
     button { min-height: 44px; }
-    .tabla th, .tabla td { padding: 8px 10px; font-size: 0.8rem; }
+    .tabla th, .tabla td { padding: 8px 6px; font-size: 0.8rem; }
     .tabla .col-id { display: none; }
+    .tabla td:last-child, .tabla th:last-child { padding-left: 2px; }
+    .tabla td:last-child button { padding: 6px 10px; font-size: 0.76rem; min-height: 36px; white-space: nowrap; }
     .scroll-hint { display: block; font-size: 0.72rem; color: var(--text-faint); margin-bottom: 6px; }
   }
 </style>
@@ -161,15 +184,61 @@
 </header>
 
 <div class="tabs">
-  <div class="tab active" onclick="showTab('pautas')">📋 Pautas</div>
+  <div class="tab active" onclick="showTab('inicio')">🏠 Inicio</div>
+  <div class="tab" onclick="showTab('pautas')">📋 Pautas</div>
   <div class="tab" onclick="showTab('nueva')">➕ Nueva Pauta</div>
   <div class="tab" onclick="showTab('corregir')">🔍 Corregir Hoja</div>
   <div class="tab" onclick="showTab('resultados')">📊 Resultados</div>
   <div class="tab" onclick="showTab('debug')">🔬 Debug Imagen</div>
 </div>
 
+<!-- TAB: INICIO -->
+<div class="panel active" id="tab-inicio">
+  <div class="card inicio-hero">
+    <h2 style="border:none;padding-left:0;">Calco — Corrección automática de hojas de respuesta</h2>
+    <p style="color:var(--text-dim);font-size:0.95rem;line-height:1.6;max-width:640px;">
+      Sistema de corrección óptica (OMR) para los ensayos del preuniversitario
+      <strong style="color:var(--text);">PreU TestU</strong>. Sube o fotografía una hoja de respuestas
+      marcada con lápiz grafito y el sistema calcula la nota automáticamente, comparándola contra la
+      pauta de respuestas correctas.
+    </p>
+    <div class="stats" id="inicio-stats" style="max-width:420px;margin-top:20px;margin-bottom:0;">
+      <div class="stat"><div class="num" id="inicio-total-pautas">–</div><div class="lbl">Pautas registradas</div></div>
+      <div class="stat"><div class="num" id="inicio-total-resultados">–</div><div class="lbl">Correcciones realizadas</div></div>
+    </div>
+  </div>
+
+  <div class="inicio-grid">
+    <div class="inicio-card" onclick="showTab('pautas')">
+      <div class="inicio-card-icono">📋</div>
+      <h3>Pautas</h3>
+      <p>Administra las pautas de respuestas correctas ya registradas.</p>
+    </div>
+    <div class="inicio-card" onclick="showTab('nueva')">
+      <div class="inicio-card-icono">➕</div>
+      <h3>Nueva Pauta</h3>
+      <p>Crea una pauta nueva definiendo las alternativas correctas de cada pregunta.</p>
+    </div>
+    <div class="inicio-card" onclick="showTab('corregir')">
+      <div class="inicio-card-icono">🔍</div>
+      <h3>Corregir Hoja</h3>
+      <p>Fotografía o sube la hoja de un alumno y obtén su nota al instante.</p>
+    </div>
+    <div class="inicio-card" onclick="showTab('resultados')">
+      <div class="inicio-card-icono">📊</div>
+      <h3>Resultados</h3>
+      <p>Consulta y filtra las correcciones realizadas por curso.</p>
+    </div>
+    <div class="inicio-card" onclick="showTab('debug')">
+      <div class="inicio-card-icono">🔬</div>
+      <h3>Debug Imagen</h3>
+      <p>Herramienta de diagnóstico visual para calibrar la detección de burbujas.</p>
+    </div>
+  </div>
+</div>
+
 <!-- TAB: PAUTAS -->
-<div class="panel active" id="tab-pautas">
+<div class="panel" id="tab-pautas">
   <div class="card">
     <h2>Pautas registradas</h2>
     <div id="lista-pautas"><p style="color:var(--text-dim)">Cargando...</p></div>
@@ -295,15 +364,31 @@
     <div id="msg-corr"></div>
   </div>
 
+  <div id="confirmacion-vista" style="display:none;">
+    <div class="card">
+      <h2>⚠️ Confirma las respuestas dudosas</h2>
+      <p style="font-size:0.88rem;color:var(--text-dim);margin-bottom:16px;">
+        Estas preguntas tienen una marca parcial o más de una burbuja con grafito. Indica cuál era
+        la alternativa real, o deja "Múltiples / no sé" si no se puede determinar.
+      </p>
+      <div id="confirmacion-lista"></div>
+      <input type="hidden" id="confirmacion-resultado-id">
+      <div style="margin-top:16px;">
+        <button onclick="enviarConfirmacion()">✅ Confirmar y ver resultado</button>
+      </div>
+    </div>
+  </div>
+
   <div id="resultado">
     <div class="card">
       <h2>Resultado</h2>
       <div class="nota-grande" id="res-nota">–</div>
       <div class="nota-label" id="res-label">–</div>
-      <div class="stats">
+      <div class="stats" id="res-stats">
         <div class="stat"><div class="num" id="res-correctas" style="color:#22c55e">–</div><div class="lbl">Correctas</div></div>
         <div class="stat"><div class="num" id="res-incorrectas" style="color:#f87171">–</div><div class="lbl">Incorrectas</div></div>
         <div class="stat"><div class="num" id="res-omitidas" style="color:#9aa1ab">–</div><div class="lbl">Omitidas</div></div>
+        <div class="stat" id="res-ambiguas-box" style="display:none;"><div class="num" id="res-ambiguas" style="color:#facc15">–</div><div class="lbl">Ambiguas</div></div>
       </div>
       <div class="detalle-grid" id="res-detalle"></div>
     </div>
@@ -373,12 +458,26 @@ const BASE = '';  // mismo origen
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 function showTab(nombre) {
-  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['pautas','nueva','corregir','resultados','debug'][i] === nombre));
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['inicio','pautas','nueva','corregir','resultados','debug'][i] === nombre));
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-'+nombre).classList.add('active');
+  if (nombre === 'inicio') cargarStatsInicio();
   if (nombre === 'pautas') cargarListaPautas();
   if (nombre === 'corregir') cargarSelectPautas();
   if (nombre === 'resultados') cargarResultados();
+}
+
+// ── Inicio ───────────────────────────────────────────────────────────────────
+async function cargarStatsInicio() {
+  try {
+    const [rp, rr] = await Promise.all([fetch(BASE+'/pautas'), fetch(BASE+'/resultados')]);
+    const [dp, dr] = await Promise.all([rp.json(), rr.json()]);
+    document.getElementById('inicio-total-pautas').textContent = dp.total ?? dp.pautas?.length ?? 0;
+    document.getElementById('inicio-total-resultados').textContent = dr.total ?? 0;
+  } catch (e) {
+    document.getElementById('inicio-total-pautas').textContent = '–';
+    document.getElementById('inicio-total-resultados').textContent = '–';
+  }
 }
 
 // ── Resultados ────────────────────────────────────────────────────────────────
@@ -646,6 +745,7 @@ async function corregirHoja() {
   const msg = document.getElementById('msg-corr');
   msg.innerHTML = '<div class="msg ok">⏳ Procesando...</div>';
   document.getElementById('resultado').style.display = 'none';
+  document.getElementById('confirmacion-vista').style.display = 'none';
 
   const fd = new FormData();
   fd.append('imagen', crImagenBlob, 'hoja.jpg');
@@ -658,9 +758,51 @@ async function corregirHoja() {
     const d = await r.json();
     if (!d.ok) throw new Error(d.detail || 'Error');
     msg.innerHTML = '';
-    mostrarResultado(d);
+    if (d.requiere_confirmacion) mostrarConfirmacion(d); else mostrarResultado(d);
   } catch(e) {
     msg.innerHTML = `<div class="msg err">❌ ${e.message}</div>`;
+  }
+}
+
+// ── Confirmación de preguntas ambiguas (marca parcial o doble marca) ──────
+let confirmacionElegidas = {};
+
+function mostrarConfirmacion(d) {
+  confirmacionElegidas = {};
+  document.getElementById('confirmacion-resultado-id').value = d.id;
+  const preguntas = Object.keys(d.ambiguas_detalle).map(Number).sort((a, b) => a - b);
+  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => `
+    <div class="confirma-item" data-q="${q}">
+      <div class="confirma-pregunta">Pregunta ${q}</div>
+      <div class="confirma-opciones">
+        ${d.ambiguas_detalle[q].map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
+        <button type="button" class="confirma-btn confirma-btn-multiple" onclick="elegirConfirmacion(${q}, null, this)">Múltiples / no sé</button>
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('confirmacion-vista').style.display = 'block';
+}
+
+function elegirConfirmacion(q, valor, btn) {
+  confirmacionElegidas[q] = valor;
+  btn.closest('.confirma-item').querySelectorAll('.confirma-btn').forEach(b => b.classList.remove('elegido'));
+  btn.classList.add('elegido');
+}
+
+async function enviarConfirmacion() {
+  const id = document.getElementById('confirmacion-resultado-id').value;
+  try {
+    const r = await fetch(BASE+'/resultados/'+id+'/confirmar', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({respuestas: confirmacionElegidas}),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.detail || 'Error al confirmar');
+    document.getElementById('confirmacion-vista').style.display = 'none';
+    mostrarResultado(d);
+  } catch (e) {
+    alert('❌ ' + e.message);
   }
 }
 
@@ -671,6 +813,13 @@ function mostrarResultado(d) {
   document.getElementById('res-correctas').textContent = d.correctas;
   document.getElementById('res-incorrectas').textContent = d.incorrectas;
   document.getElementById('res-omitidas').textContent = d.omitidas;
+  const ambiguasBox = document.getElementById('res-ambiguas-box');
+  if (d.ambiguas > 0) {
+    document.getElementById('res-ambiguas').textContent = d.ambiguas;
+    ambiguasBox.style.display = '';
+  } else {
+    ambiguasBox.style.display = 'none';
+  }
 
   const det = document.getElementById('res-detalle');
   det.innerHTML = Object.entries(d.detalle).map(([q, info]) =>
@@ -729,7 +878,7 @@ async function enviarDebug() {
 // ── Init ──────────────────────────────────────────────────────────────────
 buildGrid('col-izq', 1, 40);
 buildGrid('col-der', 41, 80);
-cargarListaPautas();
+cargarStatsInicio();
 </script>
 </body>
 </html>

@@ -110,6 +110,7 @@ N_FILAS  = 20   # preguntas por columna
 # se lea "marcada" aunque esté vacía. Se achica a 6px para dejar margen real.
 RADIO_BURBUJA  = 6     # px en imagen normalizada (interior de la burbuja)
 UMBRAL_MARCADO = 0.50  # fracción de píxeles oscuros para considerar marcada
+UMBRAL_PARCIAL = 0.15  # bajo este nivel, se considera claramente vacía (sin grafito)
 
 OPCIONES = ['A', 'B', 'C', 'D', 'E']
 
@@ -324,10 +325,20 @@ def binarizar(img_norm: np.ndarray) -> np.ndarray:
 def procesar_hoja_imagen(img: np.ndarray) -> tuple:
     """
     Igual que procesar_hoja(), pero recibe la imagen ya cargada en memoria y
-    además retorna la imagen normalizada (post corrección de perspectiva),
-    para que el llamador pueda reutilizarla (ej. generar el PDF de respaldo)
-    sin repetir la corrección de perspectiva.
-    Retorna (respuestas, img_norm).
+    además retorna la imagen normalizada (post corrección de perspectiva) y
+    las preguntas AMBIGUAS, para que el llamador pueda reutilizar la imagen
+    (ej. generar el PDF de respaldo) y pedir confirmación al usuario antes de
+    dar la respuesta por definitiva.
+
+    Una pregunta queda "ambigua" (no se resuelve automáticamente) cuando:
+      - una sola burbuja tiene algo de grafito pero no llega al umbral de
+        "marcada" (posible marca parcial), o
+      - hay más de una burbuja con grafito (posible doble marca, o un
+        borrado que dejó residuo en la burbuja original).
+    En esos casos respuestas[q] queda en None y ambiguas[q] trae la lista de
+    opciones candidatas para que el usuario confirme cuál era la real.
+
+    Retorna (respuestas, ambiguas, img_norm).
     """
     # 1. Corregir perspectiva y normalizar a 1240×1754
     img_norm = corregir_perspectiva(img)
@@ -336,6 +347,7 @@ def procesar_hoja_imagen(img: np.ndarray) -> tuple:
     binaria = binarizar(img_norm)
 
     respuestas = {}
+    ambiguas   = {}
 
     # 3. Recorrer 4 columnas × 20 filas
     for col_idx, xs in enumerate(OPC_X):
@@ -348,34 +360,38 @@ def procesar_hoja_imagen(img: np.ndarray) -> tuple:
             y_rel = Y_INICIO + (Y_FIN - Y_INICIO) * fila / (N_FILAS - 1)
             cy = int(y_rel * ALTO)
 
-            # Leer las 5 burbujas (A-E)
-            marcados = []
+            # Leer las 5 burbujas (A-E): candidatas = cualquier grafito visible
+            candidatas = []
             for i, x_rel in enumerate(xs):
                 cx = int(x_rel * ANCHO)
                 fraccion = leer_burbuja(binaria, cx, cy)
-                if fraccion >= UMBRAL_MARCADO:
-                    marcados.append(OPCIONES[i])
+                if fraccion >= UMBRAL_PARCIAL:
+                    candidatas.append((OPCIONES[i], fraccion))
 
-            if len(marcados) == 1:
-                respuestas[num_pregunta] = marcados[0]
-            elif len(marcados) == 0:
-                respuestas[num_pregunta] = None          # omitida
+            completas = [o for o, f in candidatas if f >= UMBRAL_MARCADO]
+
+            if len(candidatas) == 0:
+                respuestas[num_pregunta] = None                # omitida
+            elif len(candidatas) == 1 and len(completas) == 1:
+                respuestas[num_pregunta] = candidatas[0][0]     # una sola, bien marcada
             else:
-                respuestas[num_pregunta] = marcados[0]   # doble marca → toma primera
+                # marca parcial unica, o mas de una candidata -> ambigua
+                respuestas[num_pregunta] = None
+                ambiguas[num_pregunta] = [o for o, f in candidatas]
 
-    return respuestas, img_norm
+    return respuestas, ambiguas, img_norm
 
 
 def procesar_hoja(ruta_imagen: str) -> dict:
     """
     Procesa una foto de hoja de respuestas Calco (4 columnas × 20 filas).
     Retorna dict {1: 'A', 2: 'C', ..., 80: None} con la respuesta detectada
-    (None = omitida).
+    (None = omitida o ambigua).
     """
     img = leer_imagen(ruta_imagen)
     if img is None:
         raise ValueError(f"No se pudo leer la imagen: {ruta_imagen}")
-    respuestas, _ = procesar_hoja_imagen(img)
+    respuestas, _, _ = procesar_hoja_imagen(img)
     return respuestas
 
 
@@ -420,28 +436,48 @@ def generar_txt(nombre: str, curso: str, nombre_pauta: str,
 
 
 # ── Calificación ──────────────────────────────────────────────────────────────
-def calcular_nota(respuestas: dict, pauta: dict, total_preguntas: int = 80) -> dict:
+def calcular_nota(respuestas: dict, pauta: dict, total_preguntas: int = 80,
+                   ambiguas: dict = None) -> dict:
     """
     Compara respuestas con la pauta y calcula la nota en escala 1.0-7.0.
     Sin descuento por error (igual que PAES).
     Umbral de aprobación: 60% correctas → nota 4.0
+
+    ambiguas: {pregunta: [opciones candidatas]} — preguntas donde la
+    detección no pudo resolver una única marca clara (parcial o doble marca)
+    y siguen pendientes de confirmación por el usuario, o que el usuario
+    confirmó explícitamente como "marca múltiple / no estoy seguro". Se
+    cuentan aparte de las omitidas y no puntúan.
     """
-    correctas = incorrectas = omitidas = 0
+    ambiguas = ambiguas or {}
+    correctas = incorrectas = omitidas = ambiguas_n = 0
     detalle = {}
 
     for q in range(1, total_preguntas + 1):
         resp     = respuestas.get(q)
         correcta = pauta.get(str(q)) or pauta.get(q)
+        es_ambigua = resp is None and q in ambiguas
         es_ok    = (resp is not None and resp == correcta)
 
+        if es_ambigua:
+            resultado = 'ambigua'
+        elif es_ok:
+            resultado = 'correcta'
+        elif resp is None:
+            resultado = 'omitida'
+        else:
+            resultado = 'incorrecta'
+
         detalle[q] = {
-            'respuesta': resp,
-            'correcta':  correcta,
-            'resultado': 'correcta' if es_ok else ('omitida' if resp is None else 'incorrecta'),
+            'respuesta':  resp,
+            'correcta':   correcta,
+            'resultado':  resultado,
+            'candidatas': ambiguas.get(q) if es_ambigua else None,
         }
-        if es_ok:        correctas   += 1
-        elif resp is None: omitidas  += 1
-        else:              incorrectas += 1
+        if   resultado == 'correcta':   correctas   += 1
+        elif resultado == 'ambigua':    ambiguas_n  += 1
+        elif resultado == 'omitida':    omitidas    += 1
+        else:                           incorrectas += 1
 
     # Escala lineal 1-7 con quiebre en 60%
     fraccion = correctas / total_preguntas
@@ -454,6 +490,7 @@ def calcular_nota(respuestas: dict, pauta: dict, total_preguntas: int = 80) -> d
         'correctas':   correctas,
         'incorrectas': incorrectas,
         'omitidas':    omitidas,
+        'ambiguas':    ambiguas_n,
         'total':       total_preguntas,
         'nota':        round(nota, 1),
         'porcentaje':  round(fraccion * 100, 1),
