@@ -395,6 +395,37 @@ def procesar_hoja(ruta_imagen: str) -> dict:
     return respuestas
 
 
+# ── Recorte con zoom de una pregunta (para confirmar respuestas ambiguas) ────
+_COL_IZQ_MM   = 10.0     # .area{left:10mm} en hoja_preuc.html
+_COL_ANCHO_MM = 48.975   # (215.9 - 2×10) / 4 columnas
+
+def recortar_pregunta(img_norm: np.ndarray, num_pregunta: int, zoom: int = 2) -> bytes:
+    """
+    Recorta la fila de una pregunta específica (número + sus 5 burbujas
+    A-E) de la hoja ya enderezada, para mostrarla ampliada al usuario
+    cuando tiene que confirmar una respuesta ambigua. Retorna JPEG bytes.
+    """
+    col_idx = (num_pregunta - 1) // N_FILAS
+    fila    = (num_pregunta - 1) % N_FILAS
+
+    y_rel = Y_INICIO + (Y_FIN - Y_INICIO) * fila / (N_FILAS - 1)
+    cy = int(y_rel * ALTO)
+    margen_y = int(0.028 * ALTO)
+    y0, y1 = max(0, cy - margen_y), min(ALTO, cy + margen_y)
+
+    x0 = int((_COL_IZQ_MM + col_idx * _COL_ANCHO_MM) / 215.9 * ANCHO)
+    x1 = int((_COL_IZQ_MM + (col_idx + 1) * _COL_ANCHO_MM) / 215.9 * ANCHO)
+    x0, x1 = max(0, x0), min(ANCHO, x1)
+
+    recorte = img_norm[y0:y1, x0:x1]
+    if zoom > 1:
+        recorte = cv2.resize(recorte, (recorte.shape[1] * zoom, recorte.shape[0] * zoom),
+                              interpolation=cv2.INTER_CUBIC)
+
+    ok, buf = cv2.imencode('.jpg', recorte, [cv2.IMWRITE_JPEG_QUALITY, 90])
+    return buf.tobytes() if ok else b''
+
+
 # ── PDF de respaldo (escala de grises + blanco y negro) ──────────────────────
 def generar_pdf_procesado(img_norm: np.ndarray, umbral: int = 200) -> bytes:
     """

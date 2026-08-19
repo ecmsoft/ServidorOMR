@@ -4,12 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, StreamingResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional, List
-import os, shutil, tempfile, io
+import os, shutil, tempfile, io, base64
 import cv2
 import numpy as np
 
 import db
-from omr import procesar_hoja, procesar_hoja_imagen, generar_pdf_procesado, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, UMBRAL_PARCIAL, leer_burbuja, generar_txt
+from omr import procesar_hoja, procesar_hoja_imagen, generar_pdf_procesado, recortar_pregunta, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, UMBRAL_PARCIAL, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -123,6 +123,13 @@ async def procesar(
         total      = pauta.get("total_preguntas", 80)
         resultado  = calcular_nota(respuestas, pauta["respuestas"], total, ambiguas=ambiguas)
         imagen_pdf = generar_pdf_procesado(img_norm)
+        ambiguas_con_zoom = {
+            q: {
+                "opciones": opciones,
+                "imagen": "data:image/jpeg;base64," + base64.b64encode(recortar_pregunta(img_norm, q)).decode("ascii"),
+            }
+            for q, opciones in ambiguas.items()
+        }
     finally:
         os.unlink(ruta_tmp)
 
@@ -156,7 +163,7 @@ async def procesar(
         "fecha_entrega": fecha_entrega,
         "pauta": pauta["nombre"],
         "txt": txt,
-        "ambiguas_detalle": ambiguas,
+        "ambiguas_detalle": ambiguas_con_zoom,
         "requiere_confirmacion": bool(ambiguas),
         **resultado,
     }

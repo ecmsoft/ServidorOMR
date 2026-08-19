@@ -81,10 +81,14 @@
   .detalle-celda.omitida { background: rgba(255,255,255,0.05); color: var(--text-faint); }
   .detalle-celda.ambigua { background: rgba(250,204,21,0.14); color: #facc15; }
 
-  /* ── Confirmación de preguntas ambiguas ── */
-  .confirma-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  /* ── Confirmación de preguntas ambiguas (panel flotante) ── */
+  .confirmacion-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: flex-start; justify-content: center; padding: 20px; overflow-y: auto; }
+  .confirmacion-modal.activo { display: flex; }
+  .confirmacion-modal-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; max-width: 520px; width: 100%; margin: 20px 0; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .confirma-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
   .confirma-item:last-child { border-bottom: none; }
   .confirma-pregunta { font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; }
+  .confirma-zoom { width: 100%; border-radius: 8px; border: 1px solid var(--border); background: #fff; margin-bottom: 10px; display: block; }
   .confirma-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
   .confirma-btn { padding: 8px 14px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .confirma-btn:hover { border-color: var(--accent); }
@@ -100,6 +104,7 @@
 
   /* ── Inicio ── */
   .inicio-hero h2 { font-size: 1.3rem; margin-bottom: 10px; }
+  .inicio-desc { font-size: 0.95rem; }
   .inicio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
   .inicio-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; cursor: pointer; transition: all 0.2s; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
   .inicio-card:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,0.55); }
@@ -148,6 +153,23 @@
     .tabs { flex-wrap: wrap; overflow-x: visible; justify-content: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .tab { flex: 0 0 auto; padding: 8px 14px; font-size: 0.78rem; border-radius: 999px; background: var(--bg); border: 1px solid var(--border); margin-bottom: 0; }
     .tab.active { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    /* En Inicio, la propia grilla de tarjetas ya es la navegación: se oculta la barra de tabs */
+    body:has(#tab-inicio.active) .tabs { display: none; }
+
+    /* Inicio: hero compacto + tarjetas cuadradas en grilla de 2 columnas, sin scroll */
+    #tab-inicio.panel { padding: 10px 12px; }
+    .inicio-hero { padding: 14px; margin-bottom: 10px; }
+    .inicio-hero h2 { font-size: 1rem; margin-bottom: 6px; }
+    .inicio-hero p { font-size: 0.8rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    #inicio-stats { margin-top: 10px !important; }
+    #inicio-stats .stat { padding: 8px; }
+    #inicio-stats .stat .num { font-size: 1.2rem; }
+    #inicio-stats .stat .lbl { font-size: 0.65rem; }
+    .inicio-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .inicio-card { aspect-ratio: 1; padding: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .inicio-card-icono { font-size: 1.5rem; margin-bottom: 4px; }
+    .inicio-card h3 { font-size: 0.78rem; margin-bottom: 3px; }
+    .inicio-card p { font-size: 0.65rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
     .panel { padding: 14px; }
     .card { padding: 14px; }
@@ -196,7 +218,7 @@
 <div class="panel active" id="tab-inicio">
   <div class="card inicio-hero">
     <h2 style="border:none;padding-left:0;">Calco — Corrección automática de hojas de respuesta</h2>
-    <p style="color:var(--text-dim);font-size:0.95rem;line-height:1.6;max-width:640px;">
+    <p class="inicio-desc" style="color:var(--text-dim);line-height:1.6;max-width:640px;">
       Sistema de corrección óptica (OMR) para los ensayos del preuniversitario
       <strong style="color:var(--text);">PreU TestU</strong>. Sube o fotografía una hoja de respuestas
       marcada con lápiz grafito y el sistema calcula la nota automáticamente, comparándola contra la
@@ -364,21 +386,6 @@
     <div id="msg-corr"></div>
   </div>
 
-  <div id="confirmacion-vista" style="display:none;">
-    <div class="card">
-      <h2>⚠️ Confirma las respuestas dudosas</h2>
-      <p style="font-size:0.88rem;color:var(--text-dim);margin-bottom:16px;">
-        Estas preguntas tienen una marca parcial o más de una burbuja con grafito. Indica cuál era
-        la alternativa real, o deja "Múltiples / no sé" si no se puede determinar.
-      </p>
-      <div id="confirmacion-lista"></div>
-      <input type="hidden" id="confirmacion-resultado-id">
-      <div style="margin-top:16px;">
-        <button onclick="enviarConfirmacion()">✅ Confirmar y ver resultado</button>
-      </div>
-    </div>
-  </div>
-
   <div id="resultado">
     <div class="card">
       <h2>Resultado</h2>
@@ -452,6 +459,22 @@
   </div>
 </div>
 <canvas id="modal-canvas" style="display:none;"></canvas>
+
+<!-- MODAL: Confirmar preguntas ambiguas -->
+<div id="confirmacion-modal" class="confirmacion-modal">
+  <div class="confirmacion-modal-panel">
+    <h2 style="border:none;padding-left:0;">⚠️ Confirma las respuestas dudosas</h2>
+    <p style="font-size:0.85rem;color:var(--text-dim);margin-bottom:16px;">
+      Estas preguntas tienen una marca parcial o más de una burbuja con grafito. Mira el acercamiento
+      e indica cuál era la alternativa real, o deja "Múltiples / no sé" si no se puede determinar.
+    </p>
+    <div id="confirmacion-lista"></div>
+    <input type="hidden" id="confirmacion-resultado-id">
+    <div style="margin-top:16px;">
+      <button onclick="enviarConfirmacion()">✅ Confirmar y ver resultado</button>
+    </div>
+  </div>
+</div>
 
 <script>
 const BASE = '';  // mismo origen
@@ -745,7 +768,7 @@ async function corregirHoja() {
   const msg = document.getElementById('msg-corr');
   msg.innerHTML = '<div class="msg ok">⏳ Procesando...</div>';
   document.getElementById('resultado').style.display = 'none';
-  document.getElementById('confirmacion-vista').style.display = 'none';
+  document.getElementById('confirmacion-modal').classList.remove('activo');
 
   const fd = new FormData();
   fd.append('imagen', crImagenBlob, 'hoja.jpg');
@@ -771,16 +794,19 @@ function mostrarConfirmacion(d) {
   confirmacionElegidas = {};
   document.getElementById('confirmacion-resultado-id').value = d.id;
   const preguntas = Object.keys(d.ambiguas_detalle).map(Number).sort((a, b) => a - b);
-  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => `
+  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => {
+    const info = d.ambiguas_detalle[q];
+    return `
     <div class="confirma-item" data-q="${q}">
       <div class="confirma-pregunta">Pregunta ${q}</div>
+      ${info.imagen ? `<img class="confirma-zoom" src="${info.imagen}" alt="Pregunta ${q} ampliada">` : ''}
       <div class="confirma-opciones">
-        ${d.ambiguas_detalle[q].map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
+        ${info.opciones.map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
         <button type="button" class="confirma-btn confirma-btn-multiple" onclick="elegirConfirmacion(${q}, null, this)">Múltiples / no sé</button>
       </div>
-    </div>
-  `).join('');
-  document.getElementById('confirmacion-vista').style.display = 'block';
+    </div>`;
+  }).join('');
+  document.getElementById('confirmacion-modal').classList.add('activo');
 }
 
 function elegirConfirmacion(q, valor, btn) {
@@ -799,7 +825,7 @@ async function enviarConfirmacion() {
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.detail || 'Error al confirmar');
-    document.getElementById('confirmacion-vista').style.display = 'none';
+    document.getElementById('confirmacion-modal').classList.remove('activo');
     mostrarResultado(d);
   } catch (e) {
     alert('❌ ' + e.message);

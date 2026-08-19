@@ -257,10 +257,14 @@
   .detalle-celda.omitida   { background: rgba(255,255,255,0.05); color: var(--texto-faint); }
   .detalle-celda.ambigua   { background: rgba(250,204,21,0.14); color: #facc15; }
 
-  /* ── Confirmación de preguntas ambiguas ── */
+  /* ── Confirmación de preguntas ambiguas (panel flotante) ── */
+  .confirmacion-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 1000; align-items: flex-start; justify-content: center; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); overflow-y: auto; }
+  .confirmacion-modal.activo { display: flex; }
+  .confirmacion-modal-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radio); padding: 20px; max-width: 480px; width: 100%; margin-bottom: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   .confirma-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
   .confirma-item:last-child { border-bottom: none; }
   .confirma-pregunta { font-weight: 700; font-size: 0.92rem; margin-bottom: 10px; }
+  .confirma-zoom { width: 100%; border-radius: 10px; border: 1px solid var(--border); background: #fff; margin-bottom: 10px; display: block; }
   .confirma-opciones { display: flex; flex-wrap: wrap; gap: 8px; }
   .confirma-btn { padding: 10px 16px; background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; color: var(--texto); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.15s; min-height: 44px; }
   .confirma-btn.elegido { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
@@ -408,32 +412,6 @@
 </div>
 
 <!-- ═══════════════════════════════════════════
-     PANTALLA 2.5: CONFIRMAR RESPUESTAS DUDOSAS
-══════════════════════════════════════════════ -->
-<div class="screen" id="screen-confirmacion">
-  <div class="header">
-    <h1>⚠️ Confirma tus respuestas</h1>
-    <p>Estas preguntas quedaron con una marca dudosa</p>
-    <div class="pasos" style="margin-top:12px;">
-      <div class="paso activo"></div>
-      <div class="paso activo"></div>
-      <div class="paso"></div>
-    </div>
-  </div>
-  <div class="content">
-    <div class="card">
-      <p style="font-size:0.85rem;color:var(--texto-dim);margin-bottom:14px;">
-        Indica cuál alternativa marcaste realmente en cada una, o deja "Múltiples / no sé" si no
-        se puede determinar.
-      </p>
-      <div id="confirmacion-lista"></div>
-    </div>
-    <input type="hidden" id="confirmacion-resultado-id">
-    <button class="btn" onclick="enviarConfirmacion()">✅ Confirmar y ver resultado</button>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════
      PANTALLA 3: RESULTADO
 ══════════════════════════════════════════════ -->
 <div class="screen" id="screen-resultado">
@@ -490,6 +468,20 @@
 </div>
 
 <canvas id="canvas"></canvas>
+
+<!-- MODAL: Confirmar preguntas ambiguas -->
+<div id="confirmacion-modal" class="confirmacion-modal">
+  <div class="confirmacion-modal-panel">
+    <h1 style="font-size:1.2rem;">⚠️ Confirma tus respuestas</h1>
+    <p style="font-size:0.85rem;color:var(--texto-dim);margin:8px 0 16px;">
+      Estas preguntas quedaron con una marca dudosa. Mira el acercamiento e indica cuál marcaste
+      realmente, o deja "Múltiples / no sé" si no se puede determinar.
+    </p>
+    <div id="confirmacion-lista"></div>
+    <input type="hidden" id="confirmacion-resultado-id">
+    <button class="btn" onclick="enviarConfirmacion()" style="margin-top:16px;">✅ Confirmar y ver resultado</button>
+  </div>
+</div>
 
 <script>
 // ── Estado global ──────────────────────────────────────────────────────────
@@ -681,16 +673,19 @@ function mostrarConfirmacion(d) {
   confirmacionElegidas = {};
   document.getElementById('confirmacion-resultado-id').value = d.id;
   const preguntas = Object.keys(d.ambiguas_detalle).map(Number).sort((a, b) => a - b);
-  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => `
+  document.getElementById('confirmacion-lista').innerHTML = preguntas.map(q => {
+    const info = d.ambiguas_detalle[q];
+    return `
     <div class="confirma-item" data-q="${q}">
       <div class="confirma-pregunta">Pregunta ${q}</div>
+      ${info.imagen ? `<img class="confirma-zoom" src="${info.imagen}" alt="Pregunta ${q} ampliada">` : ''}
       <div class="confirma-opciones">
-        ${d.ambiguas_detalle[q].map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
+        ${info.opciones.map(o => `<button type="button" class="confirma-btn" onclick="elegirConfirmacion(${q}, '${o}', this)">${o}</button>`).join('')}
         <button type="button" class="confirma-btn confirma-btn-multiple" onclick="elegirConfirmacion(${q}, null, this)">Múltiples / no sé</button>
       </div>
-    </div>
-  `).join('');
-  mostrar('screen-confirmacion');
+    </div>`;
+  }).join('');
+  document.getElementById('confirmacion-modal').classList.add('activo');
 }
 
 function elegirConfirmacion(q, valor, btn) {
@@ -709,6 +704,7 @@ async function enviarConfirmacion() {
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.detail || 'Error al confirmar');
+    document.getElementById('confirmacion-modal').classList.remove('activo');
     mostrarResultado(d);
   } catch (e) {
     alert('❌ ' + e.message);
