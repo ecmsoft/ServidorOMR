@@ -101,7 +101,14 @@ Y_FIN    = 0.880
 N_FILAS  = 20   # preguntas por columna
 
 # ── Parámetros de detección ───────────────────────────────────────────────────
-RADIO_BURBUJA  = 10    # px en imagen normalizada (interior de la burbuja)
+# hoja_preuc.html: .b { width/height:5mm; border:0.8pt solid; box-sizing:border-box }
+# → el borde se resta del ancho, dejando un interior blanco real de ~4.44mm de
+#   diámetro (radio ≈12.7px en la imagen normalizada de 1240px de ancho).
+# Con RADIO_BURBUJA=10 el margen contra el borde impreso era de ~2.7px: lo
+# suficientemente chico para que el desenfoque de una foto de celular, la
+# compresión JPEG o el interpolado del warpPerspective lo toquen y la burbuja
+# se lea "marcada" aunque esté vacía. Se achica a 6px para dejar margen real.
+RADIO_BURBUJA  = 6     # px en imagen normalizada (interior de la burbuja)
 UMBRAL_MARCADO = 0.50  # fracción de píxeles oscuros para considerar marcada
 
 OPCIONES = ['A', 'B', 'C', 'D', 'E']
