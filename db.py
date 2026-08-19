@@ -64,8 +64,12 @@ def init_db():
                 nota NUMERIC(3,1),
                 porcentaje NUMERIC(5,1),
                 txt TEXT,
+                imagen_pdf BYTEA,
                 creado_en TIMESTAMPTZ NOT NULL DEFAULT now()
             );
+        """)
+        cur.execute("""
+            ALTER TABLE resultados ADD COLUMN IF NOT EXISTS imagen_pdf BYTEA;
         """)
 
 
@@ -113,21 +117,23 @@ def eliminar_pauta(pauta_id: str) -> bool:
 def guardar_resultado(pauta_id: str, nombre_estudiante: str, rut: str, curso: str,
                        fecha_entrega: str, respuestas: dict, detalle: dict,
                        correctas: int, incorrectas: int, omitidas: int,
-                       nota: float, porcentaje: float, txt: str) -> int:
+                       nota: float, porcentaje: float, txt: str,
+                       imagen_pdf: bytes = None) -> int:
     with _conn() as conn, conn.cursor() as cur:
         cur.execute(
             """
             INSERT INTO resultados (
                 pauta_id, nombre_estudiante, rut, curso, fecha_entrega,
                 respuestas, detalle, correctas, incorrectas, omitidas,
-                nota, porcentaje, txt
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                nota, porcentaje, txt, imagen_pdf
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
                 pauta_id, nombre_estudiante, rut, curso, fecha_entrega or None,
                 Json(respuestas), Json(detalle), correctas, incorrectas, omitidas,
                 nota, porcentaje, txt,
+                psycopg2.Binary(imagen_pdf) if imagen_pdf is not None else None,
             ),
         )
         return cur.fetchone()[0]

@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 import db
-from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
+from omr import procesar_hoja, procesar_hoja_imagen, generar_pdf_procesado, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -116,9 +116,13 @@ async def procesar(
         ruta_tmp = tmp.name
 
     try:
-        respuestas = procesar_hoja(ruta_tmp)
+        img = leer_imagen(ruta_tmp)
+        if img is None:
+            raise HTTPException(status_code=400, detail="No se pudo leer la imagen.")
+        respuestas, img_norm = procesar_hoja_imagen(img)
         total      = pauta.get("total_preguntas", 80)
         resultado  = calcular_nota(respuestas, pauta["respuestas"], total)
+        imagen_pdf = generar_pdf_procesado(img_norm)
     finally:
         os.unlink(ruta_tmp)
 
@@ -139,6 +143,7 @@ async def procesar(
         nota=resultado["nota"],
         porcentaje=resultado["porcentaje"],
         txt=txt,
+        imagen_pdf=imagen_pdf,
     )
 
     return {

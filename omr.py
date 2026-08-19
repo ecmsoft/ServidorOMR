@@ -321,16 +321,14 @@ def binarizar(img_norm: np.ndarray) -> np.ndarray:
 
 
 # ── Procesamiento principal ───────────────────────────────────────────────────
-def procesar_hoja(ruta_imagen: str) -> dict:
+def procesar_hoja_imagen(img: np.ndarray) -> tuple:
     """
-    Procesa una foto de hoja de respuestas Calco (4 columnas × 20 filas).
-    Retorna dict {1: 'A', 2: 'C', ..., 80: None} con la respuesta detectada
-    (None = omitida).
+    Igual que procesar_hoja(), pero recibe la imagen ya cargada en memoria y
+    además retorna la imagen normalizada (post corrección de perspectiva),
+    para que el llamador pueda reutilizarla (ej. generar el PDF de respaldo)
+    sin repetir la corrección de perspectiva.
+    Retorna (respuestas, img_norm).
     """
-    img = leer_imagen(ruta_imagen)
-    if img is None:
-        raise ValueError(f"No se pudo leer la imagen: {ruta_imagen}")
-
     # 1. Corregir perspectiva y normalizar a 1240×1754
     img_norm = corregir_perspectiva(img)
 
@@ -365,7 +363,38 @@ def procesar_hoja(ruta_imagen: str) -> dict:
             else:
                 respuestas[num_pregunta] = marcados[0]   # doble marca → toma primera
 
+    return respuestas, img_norm
+
+
+def procesar_hoja(ruta_imagen: str) -> dict:
+    """
+    Procesa una foto de hoja de respuestas Calco (4 columnas × 20 filas).
+    Retorna dict {1: 'A', 2: 'C', ..., 80: None} con la respuesta detectada
+    (None = omitida).
+    """
+    img = leer_imagen(ruta_imagen)
+    if img is None:
+        raise ValueError(f"No se pudo leer la imagen: {ruta_imagen}")
+    respuestas, _ = procesar_hoja_imagen(img)
     return respuestas
+
+
+# ── PDF de respaldo (escala de grises + blanco y negro) ──────────────────────
+def generar_pdf_procesado(img_norm: np.ndarray, umbral: int = 200) -> bytes:
+    """
+    Genera un respaldo digital en PDF (una página) de la hoja ya enderezada:
+    escala de grises (cv2) + binarización a blanco y negro con un umbral FIJO
+    de 200 (a diferencia de binarizar(), que usa un umbral adaptativo para la
+    lectura de burbujas — este respaldo busca legibilidad consistente, no
+    detección). Se procesa enteramente en el servidor, nunca en el teléfono.
+    """
+    gris = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY) if len(img_norm.shape) == 3 else img_norm
+    _, blanco_y_negro = cv2.threshold(gris, umbral, 255, cv2.THRESH_BINARY)
+
+    pagina = Image.fromarray(blanco_y_negro.astype(np.uint8), mode='L')
+    buffer = io.BytesIO()
+    pagina.save(buffer, format='PDF')
+    return buffer.getvalue()
 
 
 # ── Generación de archivo TXT ─────────────────────────────────────────────────
