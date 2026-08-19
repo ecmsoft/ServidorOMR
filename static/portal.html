@@ -115,7 +115,7 @@
     background: #000;
     border-radius: var(--radio);
     overflow: hidden;
-    aspect-ratio: 3/4;
+    aspect-ratio: 2159/2794; /* proporción real de la hoja carta (215.9x279.4mm) */
     border: 1px solid var(--border);
   }
   #video {
@@ -538,12 +538,42 @@ function dataURLtoBlob(dataURL) {
   return new Blob([arr], { type: mime });
 }
 
+// Debe coincidir con el aspect-ratio de .camara-container en el CSS
+const CAMARA_AR = 2159 / 2794;
+// Margen de recorte alrededor del marco guía (más chico que el inset visual
+// del marco en CSS, para tolerar pequeños desalineces sin cortar la hoja)
+const MARCO_V = 0.04, MARCO_H = 0.03;
+
 function capturarFoto() {
   const video  = document.getElementById('video');
   const canvas = document.getElementById('canvas');
-  canvas.width  = video.videoWidth  || 1280;
-  canvas.height = video.videoHeight || 960;
-  canvas.getContext('2d').drawImage(video, 0, 0);
+  const vw = video.videoWidth  || 1280;
+  const vh = video.videoHeight || 960;
+
+  // 1. Replicar el recorte que aplica object-fit:cover al mostrar el video
+  //    dentro de .camara-container, para capturar exactamente lo que el
+  //    usuario ve y alinea en pantalla (y no el fotograma crudo completo).
+  const videoAR = vw / vh;
+  let coverW, coverH, coverX, coverY;
+  if (videoAR > CAMARA_AR) {
+    coverH = vh; coverW = vh * CAMARA_AR;
+    coverX = (vw - coverW) / 2; coverY = 0;
+  } else {
+    coverW = vw; coverH = vw / CAMARA_AR;
+    coverX = 0; coverY = (vh - coverH) / 2;
+  }
+
+  // 2. Recortar además al área del marco guía, así el fondo (mesa, objetos)
+  //    no llega al servidor y la deteccion de esquinas/contorno de la hoja
+  //    es mucho mas confiable.
+  const sx = coverX + coverW * MARCO_H;
+  const sy = coverY + coverH * MARCO_V;
+  const sw = coverW * (1 - 2 * MARCO_H);
+  const sh = coverH * (1 - 2 * MARCO_V);
+
+  canvas.width  = sw;
+  canvas.height = sh;
+  canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
 
   // iOS Safari no soporta canvas.toBlob() de forma fiable → usar toDataURL
   try {

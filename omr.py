@@ -126,7 +126,10 @@ def _detectar_marcadores(gris: np.ndarray):
     Retorna [TL, TR, BL, BR] o None.
     """
     h, w = gris.shape
-    _, binaria = cv2.threshold(gris, 80, 255, cv2.THRESH_BINARY_INV)
+    # Umbral adaptativo (Otsu) en vez de uno fijo: el brillo real de una foto
+    # de celular varía demasiado (poca luz, sombras) para un valor constante.
+    gris_suave = cv2.GaussianBlur(gris, (5, 5), 0)
+    _, binaria = cv2.threshold(gris_suave, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
     binaria = cv2.morphologyEx(binaria, cv2.MORPH_OPEN, kernel)
 
@@ -179,7 +182,10 @@ def _detectar_hoja_blanca(imagen: np.ndarray):
     gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY) if len(imagen.shape) == 3 else imagen.copy()
     h, w = gris.shape
 
-    _, binaria = cv2.threshold(gris, 120, 255, cv2.THRESH_BINARY)
+    # Umbral adaptativo (Otsu) en vez de uno fijo, por la misma razón que en
+    # _detectar_marcadores: la iluminación real de estas fotos es muy variable.
+    gris_suave = cv2.GaussianBlur(gris, (5, 5), 0)
+    _, binaria = cv2.threshold(gris_suave, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
     binaria = cv2.morphologyEx(binaria, cv2.MORPH_CLOSE, kernel)
     kernel2 = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 30))
@@ -278,9 +284,13 @@ def procesar_hoja(ruta_imagen: str) -> dict:
     # 1. Corregir perspectiva y normalizar a 1240×1754
     img_norm = corregir_perspectiva(img)
 
-    # 2. Binarizar con umbral de Otsu (adaptativo al contraste de la foto)
-    gris = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY) if len(img_norm.shape) == 3 else img_norm
-    _, binaria = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # 2. Corregir iluminación despareja (sombras de la foto) antes de binarizar:
+    #    dividir por una versión muy difuminada de si misma aplana el gradiente
+    #    de sombra sin perder las marcas de lápiz (mucho más locales/finas).
+    gris  = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY) if len(img_norm.shape) == 3 else img_norm
+    fondo = cv2.GaussianBlur(gris, (0, 0), sigmaX=31)
+    plano = cv2.divide(gris, fondo, scale=255)
+    _, binaria = cv2.threshold(plano, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
     respuestas = {}
 
