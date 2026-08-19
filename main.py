@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 
 import db
-from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
+from omr import procesar_hoja, calcular_nota, corregir_perspectiva, leer_imagen, binarizar, OPC_X, Y_INICIO, Y_FIN, N_FILAS, RADIO_BURBUJA, ALTO, ANCHO, UMBRAL_MARCADO, leer_burbuja, generar_txt
 
 app = FastAPI(title="ServidorOMR - Calco")
 
@@ -194,14 +194,15 @@ async def debug_imagen(imagen: UploadFile = File(...)):
         # Corregir perspectiva
         img_norm = corregir_perspectiva(img)
 
-        # Binarizar
-        gris = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY)
-        _, binaria = cv2.threshold(gris, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        # Binarizar (misma función que usa /procesar — no duplicar el criterio
+        # de "marcada" para que este debug siempre refleje el resultado real)
+        binaria = binarizar(img_norm)
 
         # Convertir binarizada a BGR para dibujar encima en color
         visual = cv2.cvtColor(binaria, cv2.COLOR_GRAY2BGR)
 
         OPCIONES = ['A', 'B', 'C', 'D', 'E']
+        UMBRAL_PARCIAL = 0.15  # bajo este nivel, se considera claramente vacía
 
         # Dibujar posiciones de burbujas
         for col_idx, xs in enumerate(OPC_X):
@@ -215,16 +216,22 @@ async def debug_imagen(imagen: UploadFile = File(...)):
                     cx = int(x_rel * ANCHO)
                     fraccion = leer_burbuja(binaria, cx, cy)
                     marcada = fraccion >= UMBRAL_MARCADO
+                    parcial = (not marcada) and fraccion >= UMBRAL_PARCIAL
 
-                    color = (0, 200, 0) if marcada else (0, 0, 220)   # verde / rojo
-                    grosor = -1 if marcada else 2                       # relleno / borde
+                    if marcada:
+                        color, grosor = (0, 200, 0), -1        # verde relleno = marcada
+                    elif parcial:
+                        color, grosor = (0, 210, 255), 3        # amarillo borde grueso = grafito parcial (no llega al umbral)
+                    else:
+                        color, grosor = (0, 0, 220), 2          # rojo borde = vacía
 
                     cv2.circle(visual, (cx, cy), RADIO_BURBUJA, color, grosor)
 
                     # Fracción de relleno sobre la burbuja (para calibración)
-                    cv2.putText(visual, f"{fraccion:.2f}",
-                                (cx - 10, cy - RADIO_BURBUJA - 3),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.25, (80, 80, 80), 1)
+                    txt = f"{fraccion:.2f}"
+                    pos = (cx - 12, cy - RADIO_BURBUJA - 4)
+                    cv2.putText(visual, txt, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.32, (0, 0, 0), 3)      # contorno
+                    cv2.putText(visual, txt, pos, cv2.FONT_HERSHEY_SIMPLEX, 0.32, (255, 255, 255), 1) # relleno
 
                     # Número de pregunta en la primera burbuja de cada fila
                     if i == 0:

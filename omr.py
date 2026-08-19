@@ -122,55 +122,54 @@ def _ordenar_esquinas(pts: np.ndarray) -> np.ndarray:
 # ── Método 1: marcadores cuadrados negros en esquinas ────────────────────────
 def _detectar_marcadores(gris: np.ndarray):
     """
-    Busca los 4 cuadrados negros de las esquinas.
+    Busca los 4 cuadrados negros de las esquinas, cada uno dentro de una
+    región acotada cerca de su esquina esperada, con umbral Otsu LOCAL a esa
+    región (no global). Un Otsu global falla aquí porque el histograma de
+    toda la página (mayormente blanca) diluye el contraste de un cuadrado
+    chico, y además puede engancharse con objetos oscuros de fondo que
+    hayan quedado fuera del área de la hoja.
     Retorna [TL, TR, BL, BR] o None.
     """
     h, w = gris.shape
-    # Umbral adaptativo (Otsu) en vez de uno fijo: el brillo real de una foto
-    # de celular varía demasiado (poca luz, sombras) para un valor constante.
-    gris_suave = cv2.GaussianBlur(gris, (5, 5), 0)
-    _, binaria = cv2.threshold(gris_suave, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    binaria = cv2.morphologyEx(binaria, cv2.MORPH_OPEN, kernel)
+    margen = int(min(h, w) * 0.11)   # ~140px en la imagen normalizada 1240×1754
 
-    contornos, _ = cv2.findContours(binaria, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    regiones = {
+        'tl': (0, margen, 0, margen),
+        'tr': (0, margen, w - margen, w),
+        'bl': (h - margen, h, 0, margen),
+        'br': (h - margen, h, w - margen, w),
+    }
 
-    candidatos = []
-    for c in contornos:
-        area = cv2.contourArea(c)
-        min_a = (w * h) * 0.0003   # al menos 0.03% del área
-        max_a = (w * h) * 0.015    # máximo 1.5%
-        if min_a < area < max_a:
-            x, y, cw, ch = cv2.boundingRect(c)
-            aspecto = cw / ch if ch > 0 else 0
-            if 0.5 < aspecto < 2.0:
-                candidatos.append((x + cw // 2, y + ch // 2))
+    centros = {}
+    for nombre, (y0, y1, x0, x1) in regiones.items():
+        recorte = gris[y0:y1, x0:x1]
+        if recorte.size == 0:
+            return None
 
-    if len(candidatos) < 4:
-        return None
+        recorte_suave = cv2.GaussianBlur(recorte, (5, 5), 0)
+        _, binaria = cv2.threshold(recorte_suave, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        binaria = cv2.morphologyEx(binaria, cv2.MORPH_OPEN, kernel)
 
-    # Tomar los 4 más cercanos a cada esquina
-    esquinas_img = [
-        (0,   0  ),   # TL
-        (w,   0  ),   # TR
-        (0,   h  ),   # BL
-        (w,   h  ),   # BR
-    ]
-    resultado = []
-    usados = set()
-    for ex, ey in esquinas_img:
-        mejor = min(
-            (i for i in range(len(candidatos)) if i not in usados),
-            key=lambda i: (candidatos[i][0]-ex)**2 + (candidatos[i][1]-ey)**2,
-            default=None
-        )
+        contornos, _ = cv2.findContours(binaria, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        rh, rw = recorte.shape
+        min_a = (rw * rh) * 0.005   # al menos 0.5% del área de la región
+        max_a = (rw * rh) * 0.30    # máximo 30% del área de la región
+
+        mejor, mejor_area = None, 0
+        for c in contornos:
+            area = cv2.contourArea(c)
+            if min_a < area < max_a and area > mejor_area:
+                x, y, cw, ch = cv2.boundingRect(c)
+                aspecto = cw / ch if ch > 0 else 0
+                if 0.5 < aspecto < 2.0:
+                    mejor, mejor_area = (x + cw // 2, y + ch // 2), area
+
         if mejor is None:
             return None
-        usados.add(mejor)
-        resultado.append(candidatos[mejor])
+        centros[nombre] = (mejor[0] + x0, mejor[1] + y0)
 
-    tl, tr, bl, br = resultado
-    return np.array([tl, tr, bl, br], dtype=np.float32)
+    return np.array([centros['tl'], centros['tr'], centros['bl'], centros['br']], dtype=np.float32)
 
 
 # ── Método 2: contorno de la hoja blanca contra fondo oscuro ─────────────────
@@ -270,6 +269,24 @@ def leer_burbuja(img_bin: np.ndarray, cx: int, cy: int, radio: int = RADIO_BURBU
     return pixeles_oscuros / pixeles_totales if pixeles_totales > 0 else 0.0
 
 
+# ── Binarización robusta a sombras ────────────────────────────────────────────
+def binarizar(img_norm: np.ndarray) -> np.ndarray:
+    """
+    Binariza una imagen ya normalizada (post corrección de perspectiva)
+    compensando sombras/iluminación despareja: divide por una versión muy
+    difuminada de sí misma para aplanar el gradiente de luz sin perder las
+    marcas de lápiz (mucho más locales/finas que una sombra).
+
+    Usada tanto por procesar_hoja() como por el endpoint de debug — deben
+    compartir esta función para no divergir en el criterio de "marcada".
+    """
+    gris  = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY) if len(img_norm.shape) == 3 else img_norm
+    fondo = cv2.GaussianBlur(gris, (0, 0), sigmaX=31)
+    plano = cv2.divide(gris, fondo, scale=255)
+    _, binaria = cv2.threshold(plano, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    return binaria
+
+
 # ── Procesamiento principal ───────────────────────────────────────────────────
 def procesar_hoja(ruta_imagen: str) -> dict:
     """
@@ -284,13 +301,8 @@ def procesar_hoja(ruta_imagen: str) -> dict:
     # 1. Corregir perspectiva y normalizar a 1240×1754
     img_norm = corregir_perspectiva(img)
 
-    # 2. Corregir iluminación despareja (sombras de la foto) antes de binarizar:
-    #    dividir por una versión muy difuminada de si misma aplana el gradiente
-    #    de sombra sin perder las marcas de lápiz (mucho más locales/finas).
-    gris  = cv2.cvtColor(img_norm, cv2.COLOR_BGR2GRAY) if len(img_norm.shape) == 3 else img_norm
-    fondo = cv2.GaussianBlur(gris, (0, 0), sigmaX=31)
-    plano = cv2.divide(gris, fondo, scale=255)
-    _, binaria = cv2.threshold(plano, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    # 2. Binarizar compensando sombras
+    binaria = binarizar(img_norm)
 
     respuestas = {}
 
