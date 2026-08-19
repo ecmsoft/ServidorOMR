@@ -127,53 +127,65 @@ def _ordenar_esquinas(pts: np.ndarray) -> np.ndarray:
 
 
 # ── Método 1: marcadores cuadrados negros en esquinas ────────────────────────
-def _detectar_marcadores(gris: np.ndarray):
+def _detectar_marcadores(gris: np.ndarray, margen_frac: float = 0.5):
     """
     Busca los 4 cuadrados negros de las esquinas, cada uno dentro de una
-    región acotada cerca de su esquina esperada, con umbral Otsu LOCAL a esa
-    región (no global). Un Otsu global falla aquí porque el histograma de
-    toda la página (mayormente blanca) diluye el contraste de un cuadrado
-    chico, y además puede engancharse con objetos oscuros de fondo que
-    hayan quedado fuera del área de la hoja.
+    región acotada cerca de su esquina esperada (margen_frac = qué fracción
+    del ancho/alto de la imagen abarca esa región de búsqueda), con umbral
+    Otsu LOCAL a esa región. Un Otsu global falla aquí porque el histograma
+    de toda la página (mayormente blanca) diluye el contraste de un cuadrado
+    chico. Dentro de cada región se elige el candidato MÁS CERCANO a la
+    esquina real (no el de mayor área), que es lo que distingue al marcador
+    de otro contenido oscuro (texto, encabezados) cuando la región es amplia.
+
+    margen_frac=0.5 (cuadrantes) se usa para buscar directamente sobre la
+    foto original, sin asumir ningún recorte previo. Un margen más chico
+    (ej. 0.11) sirve para refinar sobre una imagen que ya fue recortada
+    aproximadamente.
+
     Retorna [TL, TR, BL, BR] o None.
     """
     h, w = gris.shape
-    margen = int(min(h, w) * 0.11)   # ~140px en la imagen normalizada 1240×1754
+    my = int(h * margen_frac)
+    mx = int(w * margen_frac)
 
     regiones = {
-        'tl': (0, margen, 0, margen),
-        'tr': (0, margen, w - margen, w),
-        'bl': (h - margen, h, 0, margen),
-        'br': (h - margen, h, w - margen, w),
+        'tl': (0, my, 0, mx, (0, 0)),
+        'tr': (0, my, w - mx, w, (mx, 0)),
+        'bl': (h - my, h, 0, mx, (0, my)),
+        'br': (h - my, h, w - mx, w, (mx, my)),
     }
 
     centros = {}
-    for nombre, (y0, y1, x0, x1) in regiones.items():
+    for nombre, (y0, y1, x0, x1, esquina) in regiones.items():
         recorte = gris[y0:y1, x0:x1]
         if recorte.size == 0:
             return None
 
         recorte_suave = cv2.GaussianBlur(recorte, (5, 5), 0)
         _, binaria = cv2.threshold(recorte_suave, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         binaria = cv2.morphologyEx(binaria, cv2.MORPH_OPEN, kernel)
 
         contornos, _ = cv2.findContours(binaria, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         rh, rw = recorte.shape
-        min_a = (rw * rh) * 0.005   # al menos 0.5% del área de la región
-        max_a = (rw * rh) * 0.30    # máximo 30% del área de la región
+        min_a = (rw * rh) * 0.0001   # descarta ruido minúsculo
+        max_a = (rw * rh) * 0.35     # descarta manchas enormes
 
-        mejor, mejor_area = None, 0
+        candidatos = []
         for c in contornos:
             area = cv2.contourArea(c)
-            if min_a < area < max_a and area > mejor_area:
+            if min_a < area < max_a:
                 x, y, cw, ch = cv2.boundingRect(c)
                 aspecto = cw / ch if ch > 0 else 0
-                if 0.5 < aspecto < 2.0:
-                    mejor, mejor_area = (x + cw // 2, y + ch // 2), area
+                if 0.6 < aspecto < 1.6:
+                    candidatos.append((x + cw // 2, y + ch // 2))
 
-        if mejor is None:
+        if not candidatos:
             return None
+
+        ex, ey = esquina
+        mejor = min(candidatos, key=lambda p: (p[0]-ex)**2 + (p[1]-ey)**2)
         centros[nombre] = (mejor[0] + x0, mejor[1] + y0)
 
     return np.array([centros['tl'], centros['tr'], centros['bl'], centros['br']], dtype=np.float32)
@@ -239,24 +251,38 @@ _DST_FULL = np.array([
 
 def corregir_perspectiva(imagen: np.ndarray) -> np.ndarray:
     """
-    1. Warp grueso detectando contorno de hoja blanca
-    2. Refinamiento preciso usando los 4 marcadores de esquina,
-       mapeándolos a su posición CONOCIDA (no a las esquinas del canvas)
+    Método principal: buscar los 4 marcadores de esquina DIRECTAMENTE en la
+    foto original (por cuadrantes, sin asumir ningún recorte previo) y
+    aplicar un único homography hacia su posición conocida. Es más preciso
+    y robusto que enderezar en dos pasos (contorno de hoja → refinar
+    marcadores sobre ese resultado): con fotos en ángulo pronunciado, un
+    primer warp impreciso puede empujar los marcadores casi fuera del
+    canvas, y la segunda pasada ya no logra encontrarlos.
+
+    Si no se detectan los 4 marcadores directamente (mala luz, hoja tapada,
+    etc.), se cae de respaldo al método de contorno de hoja blanca, con un
+    intento de refinamiento sobre ese resultado.
     """
-    # ── Paso 1: detectar y warpear la hoja blanca ──────────────────────────
+    gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY) if len(imagen.shape) == 3 else imagen.copy()
+
+    marcadores = _detectar_marcadores(gris, margen_frac=0.5)
+    if marcadores is not None:
+        M = cv2.getPerspectiveTransform(marcadores, _DST_MARCADORES)
+        return cv2.warpPerspective(imagen, M, (ANCHO, ALTO))
+
+    # ── Respaldo: contorno de hoja blanca (menos preciso) ──────────────────
     esquinas_hoja = _detectar_hoja_blanca(imagen)
     if esquinas_hoja is None:
-        img_warp = cv2.resize(imagen, (ANCHO, ALTO))
-    else:
-        M1 = cv2.getPerspectiveTransform(esquinas_hoja, _DST_FULL)
-        img_warp = cv2.warpPerspective(imagen, M1, (ANCHO, ALTO))
+        return cv2.resize(imagen, (ANCHO, ALTO))
 
-    # ── Paso 2: refinar con marcadores (si se detectan) ───────────────────
-    gris_warp = cv2.cvtColor(img_warp, cv2.COLOR_BGR2GRAY) if len(img_warp.shape) == 3 else img_warp.copy()
-    marcadores = _detectar_marcadores(gris_warp)
-    if marcadores is not None:
-        # Mapear centros detectados → posición conocida en coordenadas normalizadas
-        M2 = cv2.getPerspectiveTransform(marcadores, _DST_MARCADORES)
+    M1 = cv2.getPerspectiveTransform(esquinas_hoja, _DST_FULL)
+    img_warp = cv2.warpPerspective(imagen, M1, (ANCHO, ALTO))
+
+    # Intentar refinar con marcadores sobre el resultado ya recortado
+    gris_warp = cv2.cvtColor(img_warp, cv2.COLOR_BGR2GRAY)
+    marcadores2 = _detectar_marcadores(gris_warp, margen_frac=0.11)
+    if marcadores2 is not None:
+        M2 = cv2.getPerspectiveTransform(marcadores2, _DST_MARCADORES)
         img_warp = cv2.warpPerspective(img_warp, M2, (ANCHO, ALTO))
 
     return img_warp
@@ -270,9 +296,9 @@ def leer_burbuja(img_bin: np.ndarray, cx: int, cy: int, radio: int = RADIO_BURBU
     """
     mascara = np.zeros(img_bin.shape, dtype=np.uint8)
     cv2.circle(mascara, (cx, cy), radio, 255, -1)
-    region = cv2.bitwise_and(img_bin, img_bin, mask=mascara)
-    pixeles_totales = np.sum(mascara > 0)
-    pixeles_oscuros = np.sum(region == 0)
+    dentro_del_circulo = mascara > 0
+    pixeles_totales = np.sum(dentro_del_circulo)
+    pixeles_oscuros = np.sum((img_bin == 0) & dentro_del_circulo)
     return pixeles_oscuros / pixeles_totales if pixeles_totales > 0 else 0.0
 
 
