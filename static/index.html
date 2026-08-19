@@ -86,9 +86,12 @@
   .upload-area:hover { border-color: var(--accent); background: var(--accent-soft); }
   .upload-area input { display: none; }
 
-  /* ── Cámara en vivo (Corregir Hoja) ── */
+  /* ── Cámara en modal (Corregir Hoja + Debug Imagen) ── */
+  .camara-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+  .camara-modal.activo { display: flex; }
+  .camara-modal-panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
   .camara-container { position: relative; width: 100%; max-width: 420px; margin: 0 auto; background: #000; border-radius: var(--radius); overflow: hidden; aspect-ratio: 2159/2794; border: 1px solid var(--border); }
-  #cr-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #modal-video { width: 100%; height: 100%; object-fit: cover; display: block; }
   .camara-overlay { position: absolute; inset: 0; pointer-events: none; }
   .camara-frame { position: absolute; top: 8%; left: 6%; right: 6%; bottom: 8%; border: 3px solid rgba(255,255,255,0.7); border-radius: 8px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.35); }
   .camara-frame::before, .camara-frame::after, .camara-frame-tl, .camara-frame-br { content: ''; position: absolute; width: 24px; height: 24px; border-color: var(--accent); border-style: solid; }
@@ -97,7 +100,6 @@
   .camara-frame-tl      { bottom: -3px; left: -3px; border-width: 0 0 4px 4px; border-radius: 0 0 0 4px; }
   .camara-frame-br      { bottom: -3px; right: -3px; border-width: 0 4px 4px 0; border-radius: 0 0 4px 0; }
   .camara-tip { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.65); color: #fff; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; white-space: nowrap; backdrop-filter: blur(4px); }
-  #cr-canvas { display: none; }
   .row { display: flex; gap: 12px; align-items: flex-end; }
   .row > * { flex: 1; }
   .row > button { flex: 0 0 auto; }
@@ -270,21 +272,12 @@
     <h2>Imagen de la hoja</h2>
 
     <div id="cr-camara-vista">
-      <div class="camara-container">
-        <video id="cr-video" autoplay playsinline muted></video>
-        <div class="camara-overlay">
-          <div class="camara-frame">
-            <div class="camara-frame-tl"></div>
-            <div class="camara-frame-br"></div>
-          </div>
-          <div class="camara-tip">Alinea la hoja dentro del marco</div>
-        </div>
+      <div class="upload-area" onclick="abrirCamaraModal('corregir')">
+        📷 Toca aquí para subir foto<br><span style="font-size:0.8rem;color:var(--text-dim)">Se abrirá la cámara</span>
       </div>
-      <div style="margin-top:12px;display:flex;gap:8px;">
-        <button onclick="capturarFotoCorreccion()">📸 Tomar foto</button>
-        <button class="secondary" onclick="document.getElementById('cr-imagen').click()">📁 Subir archivo</button>
+      <div style="margin-top:8px;text-align:center;">
+        <button class="secondary" onclick="document.getElementById('cr-imagen').click()" style="font-size:0.85rem;">📁 O sube un archivo</button>
       </div>
-      <div id="cr-camara-msg" style="font-size:0.85rem;color:var(--text-dim);margin-top:8px;"></div>
     </div>
 
     <div id="cr-preview-vista" style="display:none;">
@@ -295,7 +288,6 @@
     </div>
 
     <input type="file" id="cr-imagen" accept="image/*" style="display:none" onchange="previewImagenArchivo(this)">
-    <canvas id="cr-canvas"></canvas>
 
     <div style="margin-top:16px;">
       <button onclick="corregirHoja()">🔍 Corregir hoja</button>
@@ -342,14 +334,39 @@
       <span style="color:#22c55e;font-weight:700;">● Verde = marcada</span> &nbsp;
       <span style="color:#f87171;font-weight:700;">● Rojo = posición esperada (vacía)</span>
     </p>
-    <label class="upload-area" for="debug-file">
-      <input type="file" id="debug-file" accept="image/*" onchange="nombrarArchivoDebug(this); enviarDebug()">
-      <div id="debug-upload-text">📷 Toca aquí para subir la foto<br><span style="font-size:0.8rem;color:var(--text-dim)">JPG o PNG</span></div>
-    </label>
+    <div class="upload-area" onclick="abrirCamaraModal('debug')">
+      <div id="debug-upload-text">📷 Toca aquí para subir foto<br><span style="font-size:0.8rem;color:var(--text-dim)">Se abrirá la cámara</span></div>
+    </div>
+    <div style="margin-top:8px;text-align:center;">
+      <button class="secondary" onclick="document.getElementById('debug-file').click()" style="font-size:0.85rem;">📁 O sube un archivo</button>
+    </div>
+    <input type="file" id="debug-file" accept="image/*" style="display:none" onchange="nombrarArchivoDebug(this); enviarDebug()">
     <div id="debug-loading" style="display:none;margin-top:16px;color:var(--text-dim);">⏳ Procesando...</div>
     <div id="debug-resultado" style="margin-top:16px;"></div>
   </div>
 </div>
+
+<!-- MODAL: Cámara compartida (Corregir Hoja + Debug Imagen) -->
+<div id="camara-modal" class="camara-modal">
+  <div class="camara-modal-panel">
+    <div class="camara-container">
+      <video id="modal-video" autoplay playsinline muted></video>
+      <div class="camara-overlay">
+        <div class="camara-frame">
+          <div class="camara-frame-tl"></div>
+          <div class="camara-frame-br"></div>
+        </div>
+        <div class="camara-tip">Alinea la hoja dentro del marco</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button onclick="capturarFotoModal()">📸 Tomar foto</button>
+      <button class="secondary" onclick="cerrarCamaraModal()">Cancelar</button>
+    </div>
+    <div id="camara-modal-msg" style="font-size:0.85rem;color:var(--text-dim);margin-top:8px;"></div>
+  </div>
+</div>
+<canvas id="modal-canvas" style="display:none;"></canvas>
 
 <script>
 const BASE = '';  // mismo origen
@@ -360,7 +377,7 @@ function showTab(nombre) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('tab-'+nombre).classList.add('active');
   if (nombre === 'pautas') cargarListaPautas();
-  if (nombre === 'corregir') { cargarSelectPautas(); iniciarCamaraCorreccion(); } else { detenerCamaraCorreccion(); }
+  if (nombre === 'corregir') cargarSelectPautas();
   if (nombre === 'resultados') cargarResultados();
 }
 
@@ -530,37 +547,38 @@ async function cargarSelectPautas() {
     d.pautas.map(p => `<option value="${p.id}">${p.nombre} (${p.asignatura||p.id})</option>`).join('');
 }
 
-// ── Cámara en vivo ────────────────────────────────────────────────────────
-let crStream = null;
+// ── Cámara en modal (compartida entre Corregir Hoja y Debug Imagen) ────────
+let modalStream  = null;
+let modalDestino = null;   // 'corregir' | 'debug'
 let crImagenBlob = null;
-const CR_CAMARA_AR = 2159 / 2794;   // debe coincidir con .camara-container en el CSS
-const CR_MARCO_V = 0.04, CR_MARCO_H = 0.03;
+let debugImagenBlob = null;
+const CAMARA_AR = 2159 / 2794;   // debe coincidir con .camara-container en el CSS
+const MARCO_V = 0.04, MARCO_H = 0.03;
 
-async function iniciarCamaraCorreccion() {
-  const msg = document.getElementById('cr-camara-msg');
-  if (!msg) return;
-  // Si ya hay una foto capturada/pendiente (vista de preview activa), no
-  // volver a pedir la cámara al reentrar a la pestaña.
-  const previewVista = document.getElementById('cr-preview-vista');
-  if (previewVista && previewVista.style.display !== 'none') return;
+async function abrirCamaraModal(destino) {
+  modalDestino = destino;
+  document.getElementById('camara-modal').classList.add('activo');
+  const msg = document.getElementById('camara-modal-msg');
   msg.textContent = '';
   try {
-    crStream = await navigator.mediaDevices.getUserMedia({
+    modalStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
     });
-    document.getElementById('cr-video').srcObject = crStream;
+    document.getElementById('modal-video').srcObject = modalStream;
   } catch (e) {
-    msg.textContent = '⚠️ No se pudo acceder a la cámara. Usa "Subir archivo".';
+    msg.textContent = '⚠️ No se pudo acceder a la cámara. Cierra y usa "Subir archivo".';
   }
 }
 
-function detenerCamaraCorreccion() {
-  if (crStream) { crStream.getTracks().forEach(t => t.stop()); crStream = null; }
+function cerrarCamaraModal() {
+  if (modalStream) { modalStream.getTracks().forEach(t => t.stop()); modalStream = null; }
+  document.getElementById('camara-modal').classList.remove('activo');
+  modalDestino = null;
 }
 
-function capturarFotoCorreccion() {
-  const video  = document.getElementById('cr-video');
-  const canvas = document.getElementById('cr-canvas');
+function capturarFotoModal() {
+  const video  = document.getElementById('modal-video');
+  const canvas = document.getElementById('modal-canvas');
   const vw = video.videoWidth  || 0;
   const vh = video.videoHeight || 0;
   if (!vw || !vh) return;
@@ -569,25 +587,34 @@ function capturarFotoCorreccion() {
   // (mismo criterio que portal.html), para no subir fondo innecesario.
   const videoAR = vw / vh;
   let coverW, coverH, coverX, coverY;
-  if (videoAR > CR_CAMARA_AR) {
-    coverH = vh; coverW = vh * CR_CAMARA_AR;
+  if (videoAR > CAMARA_AR) {
+    coverH = vh; coverW = vh * CAMARA_AR;
     coverX = (vw - coverW) / 2; coverY = 0;
   } else {
-    coverW = vw; coverH = vw / CR_CAMARA_AR;
+    coverW = vw; coverH = vw / CAMARA_AR;
     coverX = 0; coverY = (vh - coverH) / 2;
   }
-  const sx = coverX + coverW * CR_MARCO_H;
-  const sy = coverY + coverH * CR_MARCO_V;
-  const sw = coverW * (1 - 2 * CR_MARCO_H);
-  const sh = coverH * (1 - 2 * CR_MARCO_V);
+  const sx = coverX + coverW * MARCO_H;
+  const sy = coverY + coverH * MARCO_V;
+  const sw = coverW * (1 - 2 * MARCO_H);
+  const sh = coverH * (1 - 2 * MARCO_V);
 
   canvas.width  = sw;
   canvas.height = sh;
   canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
 
   canvas.toBlob(blob => {
-    crImagenBlob = blob;
-    mostrarPreviewCorreccion(URL.createObjectURL(blob));
+    const destino = modalDestino;
+    cerrarCamaraModal();
+    if (destino === 'corregir') {
+      crImagenBlob = blob;
+      mostrarPreviewCorreccion(URL.createObjectURL(blob));
+    } else if (destino === 'debug') {
+      debugImagenBlob = blob;
+      document.getElementById('debug-upload-text').innerHTML =
+        '✅ Foto capturada<br><span style="font-size:0.8rem;color:var(--text-dim)">Toca para cambiar</span>';
+      enviarDebug();
+    }
   }, 'image/jpeg', 0.92);
 }
 
@@ -602,7 +629,6 @@ function mostrarPreviewCorreccion(url) {
   document.getElementById('preview-img').src = url;
   document.getElementById('cr-camara-vista').style.display = 'none';
   document.getElementById('cr-preview-vista').style.display = 'block';
-  detenerCamaraCorreccion();
 }
 
 function repetirFotoCorreccion() {
@@ -610,7 +636,6 @@ function repetirFotoCorreccion() {
   document.getElementById('cr-imagen').value = '';
   document.getElementById('cr-preview-vista').style.display = 'none';
   document.getElementById('cr-camara-vista').style.display = 'block';
-  iniciarCamaraCorreccion();
 }
 
 async function corregirHoja() {
@@ -659,19 +684,19 @@ function mostrarResultado(d) {
 function nombrarArchivoDebug(input) {
   const file = input.files[0];
   if (!file) return;
+  debugImagenBlob = file;
   document.getElementById('debug-upload-text').innerHTML =
     `✅ ${file.name}<br><span style="font-size:0.8rem;color:var(--text-dim)">Toca para cambiar</span>`;
 }
 
 async function enviarDebug() {
-  const file = document.getElementById('debug-file').files[0];
-  if (!file) return;
+  if (!debugImagenBlob) return;
 
   document.getElementById('debug-loading').style.display = 'block';
   document.getElementById('debug-resultado').innerHTML = '';
 
   const fd = new FormData();
-  fd.append('imagen', file);
+  fd.append('imagen', debugImagenBlob, 'hoja.jpg');
 
   try {
     const r = await fetch('/debug-imagen', { method: 'POST', body: fd });
